@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080, initial-scale=1">
+<title>Live Trading Room</title>
+<style>
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:#060a12;font-family:'Segoe UI',Arial,sans-serif;overflow-x:hidden;}
+  /* wrapper che scala per adattarsi a finestre piccole */
+  #scaler{width:1080px;height:1920px;transform-origin:top left;position:relative;}
+  #stage{position:relative;width:1080px;height:1920px;overflow:hidden;background:#060a12;}
+
+  /* SFONDO - dentro #bglayer che viene bucato con mask nei punti di cam e schermo */
+  #bglayer{position:absolute;inset:0;z-index:1;
+    -webkit-mask:var(--holes);mask:var(--holes);
+    -webkit-mask-composite:source-over;mask-composite:add;
+  }
+  #bg{position:absolute;inset:0;background:linear-gradient(180deg,#05070d 0%,#091220 50%,#0e1a2b 100%);}
+  .grid-line{position:absolute;left:0;width:100%;height:1px;background:rgba(79,209,255,.06);}
+  .grid-col{position:absolute;top:0;height:100%;width:1px;background:rgba(79,209,255,.05);}
+
+  #candles{position:absolute;bottom:0;left:0;width:220%;height:1920px;display:flex;align-items:flex-end;animation:scrollC 16s linear infinite;}
+  .candle{position:relative;width:22px;margin:0 7px;flex-shrink:0;}
+  @keyframes scrollC{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+  #chartcanvas{position:absolute;top:0;left:0;width:220%;height:1920px;animation:scrollC 16s linear infinite;}
+
+  .float-num{position:absolute;font-weight:800;font-size:20px;opacity:0;pointer-events:none;animation:floatUp 5s ease-out infinite;z-index:4;}
+  @keyframes floatUp{0%{opacity:0;transform:translateY(0)}15%{opacity:1}85%{opacity:.8}100%{opacity:0;transform:translateY(-220px)}}
+
+  .spark{position:absolute;width:2px;height:2px;border-radius:50%;background:#4fd1ff;animation:twinkle 3s infinite ease-in-out;}
+  @keyframes twinkle{0%,100%{opacity:.1}50%{opacity:.8}}
+
+  #vignette{position:absolute;inset:0;box-shadow:inset 0 0 240px 100px rgba(0,0,0,.65);pointer-events:none;z-index:5;}
+  #scanline{position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(255,255,255,.015) 0 2px,transparent 2px 4px);pointer-events:none;z-index:5;mix-blend-mode:overlay;}
+
+  /* TOPBAR */
+  #topbar{position:absolute;top:26px;left:0;width:100%;text-align:center;z-index:50;}
+  #topbar h1{
+    color:#fff;font-size:38px;margin:0;letter-spacing:1px;font-weight:900;
+    text-shadow:0 0 30px rgba(0,230,150,.8),0 0 60px rgba(0,230,150,.3),0 2px 8px rgba(0,0,0,.9);
+  }
+  #topbar .sub{color:#4fd1ff;font-size:16px;margin-top:4px;letter-spacing:3px;text-transform:uppercase;text-shadow:0 0 14px rgba(79,209,255,.6);}
+
+  /* PANNELLI LATERALI */
+  #left-panel{position:absolute;top:150px;left:14px;z-index:40;display:flex;flex-direction:column;gap:12px;width:200px;}
+  #right-panel{position:absolute;top:150px;right:14px;z-index:40;display:flex;flex-direction:column;gap:12px;width:200px;}
+
+  .mini-chart{
+    width:200px;height:96px;background:rgba(6,12,22,.82);
+    border:1px solid rgba(79,209,255,.25);border-radius:12px;
+    overflow:hidden;position:relative;
+    box-shadow:0 0 16px rgba(0,0,0,.5);
+  }
+  .mc-top{
+    position:absolute;top:0;left:0;right:0;height:26px;
+    display:flex;justify-content:space-between;align-items:center;
+    padding:0 9px;z-index:2;
+    background:linear-gradient(180deg,rgba(6,12,22,.9),rgba(6,12,22,0));
+  }
+  .mc-name{font-size:11px;font-weight:800;color:#8ba3b5;letter-spacing:.5px;}
+  .mc-right{display:flex;flex-direction:column;align-items:flex-end;line-height:1.15;}
+  .mc-price{font-size:11px;font-weight:800;}
+  .mc-pct{font-size:10px;font-weight:900;}
+  .mcc{position:absolute;bottom:0;left:0;width:100%;height:100%;}
+
+  .price-table{
+    width:200px;background:rgba(6,12,22,.85);
+    border:1px solid rgba(0,230,150,.25);border-radius:12px;
+    padding:10px 0 6px;
+    box-shadow:0 0 16px rgba(0,0,0,.5);
+  }
+  .price-table h3{color:#00e696;font-size:11px;font-weight:800;margin:0 0 8px 12px;letter-spacing:2px;text-transform:uppercase;}
+  .pr{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:5px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.04);}
+  .pr:last-child{border-bottom:none;}
+  .pr .pn{color:#8ba3b5;font-weight:600;}
+  .pr .pv{font-weight:800;text-align:right;}
+  .pr .pc{font-size:10px;font-weight:800;text-align:right;min-width:46px;}
+
+  /* WEBCAM */
+  #webcam-frame{
+    position:absolute;top:150px;left:50%;transform:translateX(-50%);
+    width:540px;height:540px;border-radius:999px;
+    background:transparent;
+    border:5px solid #00e696;
+    box-shadow:0 0 0 3px rgba(0,0,0,.6),0 0 50px rgba(0,230,150,.5),0 0 100px rgba(0,230,150,.15);
+    z-index:45;
+  }
+  #webcam-frame .label{
+    position:absolute;bottom:-38px;left:50%;transform:translateX(-50%);
+    background:#00e696;color:#04160f;font-weight:900;font-size:15px;
+    padding:5px 20px;border-radius:20px;letter-spacing:1px;white-space:nowrap;
+    box-shadow:0 4px 12px rgba(0,0,0,.5);
+  }
+
+  /* SCHERMO */
+  #screen-frame{
+    position:absolute;top:790px;left:50%;transform:translateX(-50%);
+    width:1040px;height:1050px;border-radius:20px;
+    background:transparent;
+    border:5px solid #4fd1ff;
+    box-shadow:0 0 0 3px rgba(0,0,0,.6),0 0 50px rgba(79,209,255,.45),0 0 100px rgba(79,209,255,.1);
+    z-index:45;
+  }
+  #screen-frame .label{
+    position:absolute;top:-38px;left:50%;transform:translateX(-50%);
+    background:#4fd1ff;color:#031b22;font-weight:900;font-size:15px;
+    padding:5px 20px;border-radius:20px;letter-spacing:1px;white-space:nowrap;
+    box-shadow:0 4px 12px rgba(0,0,0,.5);
+  }
+
+  #clock{
+    position:absolute;bottom:78px;right:22px;z-index:48;
+    background:rgba(6,12,20,.85);border:1px solid rgba(79,209,255,.3);
+    border-radius:10px;padding:6px 14px;text-align:right;
+  }
+  #clock .t{color:#4fd1ff;font-size:20px;font-weight:800;letter-spacing:2px;}
+  #clock .d{color:#4a6070;font-size:11px;letter-spacing:1px;}
+
+  #ticker{
+    position:absolute;bottom:0;left:0;width:100%;height:66px;
+    background:rgba(4,8,14,.88);
+    display:flex;align-items:center;overflow:hidden;z-index:50;
+    border-top:3px solid #00e696;
+  }
+  .tick-label{
+    flex-shrink:0;padding:0 16px;color:#00e696;font-weight:900;font-size:17px;letter-spacing:1px;
+    border-right:2px solid rgba(0,230,150,.4);white-space:nowrap;
+  }
+  .tick-scroll{flex:1;overflow:hidden;position:relative;height:100%;}
+  .tick-inner{
+    display:inline-flex;white-space:nowrap;gap:44px;height:100%;align-items:center;padding-left:20px;
+    animation:tickMove 32s linear infinite;
+  }
+  .tick-item{font-size:18px;font-weight:700;color:#cfe8f5;display:inline-flex;align-items:center;gap:8px;flex-shrink:0;}
+  .tick-item .tn{color:#8ba3b5;font-weight:600;font-size:16px;}
+  .tick-item .tv{font-weight:900;}
+  .tick-item .tp{font-size:15px;font-weight:800;}
+  @keyframes tickMove{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+</style>
+</head>
+<body>
+<div id="scaler">
+<div id="stage">
+  <div id="bg"></div>
+  <div id="grid"></div>
+  <div id="candles"></div>
+  <canvas id="chartcanvas" width="2376" height="1920"></canvas>
+  <div id="sparks"></div>
+  <div id="floats"></div>
+  <div id="vignette"></div>
+  <div id="scanline"></div>
+
+  <div id="topbar">
+    <h1>NON SONO CONSIGLI FINANZIARI</h1>
+    <div class="sub">analisi mercati in tempo reale</div>
+  </div>
+
+  <!-- SINISTRA -->
+  <div id="left-panel">
+    <div class="mini-chart">
+      <div class="mc-top"><span class="mc-name">BTC/USD</span><span class="mc-right"><span class="mc-price" id="lp-btc-p" style="color:#00e696">67.240</span><span class="mc-pct" id="lp-btc-c" style="color:#00e696">+1.4%</span></span></div>
+      <canvas class="mcc" data-base="500" data-vol="30" data-color="#00e696" width="400" height="192"></canvas>
+    </div>
+    <div class="mini-chart">
+      <div class="mc-top"><span class="mc-name">ETH/USD</span><span class="mc-right"><span class="mc-price" id="lp-eth-p" style="color:#ff4a5a">3.412</span><span class="mc-pct" id="lp-eth-c" style="color:#ff4a5a">-0.8%</span></span></div>
+      <canvas class="mcc" data-base="110" data-vol="8" data-color="#ff4a5a" width="400" height="192"></canvas>
+    </div>
+    <div class="mini-chart">
+      <div class="mc-top"><span class="mc-name">GOLD</span><span class="mc-right"><span class="mc-price" id="lp-gold-p" style="color:#f5c842">2.351</span><span class="mc-pct" id="lp-gold-c" style="color:#f5c842">+0.3%</span></span></div>
+      <canvas class="mcc" data-base="140" data-vol="5" data-color="#f5c842" width="400" height="192"></canvas>
+    </div>
+    <div class="mini-chart">
+      <div class="mc-top"><span class="mc-name">OIL/WTI</span><span class="mc-right"><span class="mc-price" id="lp-oil-p" style="color:#ff8c42">78.45</span><span class="mc-pct" id="lp-oil-c" style="color:#ff8c42">+0.6%</span></span></div>
+      <canvas class="mcc" data-base="78" data-vol="4" data-color="#ff8c42" width="400" height="192"></canvas>
+    </div>
+    <div class="price-table">
+      <h3>Crypto</h3>
+      <div class="pr"><span class="pn">SOL</span><span class="pv" id="rp-sol" style="color:#00e696">148.20</span><span class="pc" id="rp-sol-c" style="color:#00e696">+2.1%</span></div>
+      <div class="pr"><span class="pn">XRP</span><span class="pv" id="rp-xrp" style="color:#ff4a5a">0.5240</span><span class="pc" id="rp-xrp-c" style="color:#ff4a5a">-0.5%</span></div>
+      <div class="pr"><span class="pn">BNB</span><span class="pv" id="rp-bnb" style="color:#00e696">592.10</span><span class="pc" id="rp-bnb-c" style="color:#00e696">+0.9%</span></div>
+    </div>
+  </div>
+
+  <!-- DESTRA -->
+  <div id="right-panel">
+    <div class="price-table">
+      <h3>Indici</h3>
+      <div class="pr"><span class="pn">SP500</span><span class="pv" id="rp-sp" style="color:#00e696">5.104</span><span class="pc" id="rp-sp-c" style="color:#00e696">+0.5%</span></div>
+      <div class="pr"><span class="pn">NASDAQ</span><span class="pv" id="rp-nq" style="color:#00e696">18.021</span><span class="pc" id="rp-nq-c" style="color:#00e696">+0.7%</span></div>
+      <div class="pr"><span class="pn">DOW</span><span class="pv" id="rp-dw" style="color:#ff4a5a">38.950</span><span class="pc" id="rp-dw-c" style="color:#ff4a5a">-0.2%</span></div>
+      <div class="pr"><span class="pn">DAX</span><span class="pv" id="rp-dx" style="color:#00e696">17.830</span><span class="pc" id="rp-dx-c" style="color:#00e696">+0.4%</span></div>
+    </div>
+    <div class="price-table">
+      <h3>Forex</h3>
+      <div class="pr"><span class="pn">EUR/USD</span><span class="pv" id="rp-eu" style="color:#ff4a5a">1.0872</span><span class="pc" id="rp-eu-c" style="color:#ff4a5a">-0.3%</span></div>
+      <div class="pr"><span class="pn">GBP/USD</span><span class="pv" id="rp-gu" style="color:#00e696">1.2648</span><span class="pc" id="rp-gu-c" style="color:#00e696">+0.1%</span></div>
+      <div class="pr"><span class="pn">USD/JPY</span><span class="pv" id="rp-uj" style="color:#00e696">151.42</span><span class="pc" id="rp-uj-c" style="color:#00e696">+0.2%</span></div>
+    </div>
+    <div class="mini-chart">
+      <div class="mc-top"><span class="mc-name">EUR/USD</span><span class="mc-right"><span class="mc-price" id="lp-eu-p" style="color:#ff4a5a">1.0872</span><span class="mc-pct" id="lp-eu-c" style="color:#ff4a5a">-0.3%</span></span></div>
+      <canvas class="mcc" data-base="108" data-vol="2" data-color="#ff4a5a" width="400" height="192"></canvas>
+    </div>
+    <div class="mini-chart">
+      <div class="mc-top"><span class="mc-name">NASDAQ</span><span class="mc-right"><span class="mc-price" id="lp-nq-p" style="color:#00e696">18.021</span><span class="mc-pct" id="lp-nq-c" style="color:#00e696">+0.7%</span></span></div>
+      <canvas class="mcc" data-base="180" data-vol="12" data-color="#00e696" width="400" height="192"></canvas>
+    </div>
+  </div>
+
+  <div id="webcam-frame"><div class="label">🎙 IN DIRETTA</div></div>
+  <div id="screen-frame"><div class="label">📊 GRAFICO / PIATTAFORMA</div></div>
+
+  <div id="clock">
+    <div class="t" id="clock-t">00:00:00</div>
+    <div class="d" id="clock-d">LUN 28 SET</div>
+  </div>
+
+  <div id="ticker">
+    <div class="tick-label">📈 LIVE</div>
+    <div class="tick-scroll"><div class="tick-inner" id="tick-inner"></div></div>
+  </div>
+</div>
+</div>
+
+<script>
+// SCALER: adatta l'overlay alla larghezza della finestra (per anteprima browser). In OBS resta 1080x1920.
+function fitScale(){
+  const s=document.getElementById('scaler');
+  const w=window.innerWidth, h=window.innerHeight;
+  const scale=Math.min(w/1080, h/1920);
+  s.style.transform='scale('+scale+')';
+  document.body.style.height=(1920*scale)+'px';
+}
+window.addEventListener('resize',fitScale);
+fitScale();
+
+// GRIGLIA
+const gridEl=document.getElementById('grid');
+for(let i=0;i<22;i++){const l=document.createElement('div');l.className='grid-line';l.style.top=(i*88)+'px';gridEl.appendChild(l);}
+for(let i=0;i<10;i++){const c=document.createElement('div');c.className='grid-col';c.style.left=(i*120)+'px';gridEl.appendChild(c);}
+
+// PARTICELLE
+const sparksEl=document.getElementById('sparks');
+for(let i=0;i<60;i++){const s=document.createElement('div');s.className='spark';s.style.left=Math.random()*1080+'px';s.style.top=Math.random()*1920+'px';s.style.animationDelay=(Math.random()*3)+'s';sparksEl.appendChild(s);}
+
+// CANDELE SFONDO
+const candlesEl=document.getElementById('candles');
+let chtml='';
+for(let i=0;i<80;i++){
+  const up=Math.random()>0.45;
+  const bH=20+Math.random()*110, wH=bH+15+Math.random()*50;
+  const col=up?'#00e696':'#ff4a5a';
+  chtml+=`<div class="candle" style="height:${wH}px;">
+    <div style="height:${wH}px;background:${col}55;bottom:0;left:50%;transform:translateX(-50%);width:2px;position:absolute;"></div>
+    <div style="height:${bH}px;background:${col}44;bottom:${(wH-bH)/2}px;left:0;width:100%;box-shadow:0 0 8px ${col}66;border-radius:2px;position:absolute;"></div>
+  </div>`;
+}
+candlesEl.innerHTML=chtml+chtml;
+
+// GRAFICO SFONDO
+const bgCanvas=document.getElementById('chartcanvas'), bgCtx=bgCanvas.getContext('2d');
+(function(){
+  const pts=[];let y=1500;const sw=bgCanvas.width/2/80;
+  for(let i=0;i<=80;i++){y+=(Math.random()-.47)*70;y=Math.max(1100,Math.min(1800,y));pts.push(y);}
+  for(let rep=0;rep<2;rep++){
+    bgCtx.beginPath();
+    pts.forEach((py,i)=>{const x=rep*(bgCanvas.width/2)+i*sw;i===0?bgCtx.moveTo(x,py):bgCtx.lineTo(x,py);});
+    bgCtx.strokeStyle='rgba(79,209,255,0.3)';bgCtx.lineWidth=3;bgCtx.shadowColor='#4fd1ff';bgCtx.shadowBlur=10;bgCtx.stroke();
+  }
+})();
+
+// MINI GRAFICI
+const miniData=[];
+document.querySelectorAll('.mcc').forEach(mc=>{
+  const base=parseFloat(mc.dataset.base||100), vol=parseFloat(mc.dataset.vol||5), color=mc.dataset.color||'#00e696';
+  const pts=[];let v=base;
+  for(let i=0;i<60;i++){v+=(Math.random()-.5)*vol;pts.push(v);}
+  miniData.push({canvas:mc,pts,vol,color});
+});
+function drawMini(d){
+  const ctx=d.canvas.getContext('2d'),W=d.canvas.width,H=d.canvas.height;
+  ctx.clearRect(0,0,W,H);
+  const pts=d.pts,min=Math.min(...pts),max=Math.max(...pts),range=max-min||1;
+  const toY=v=>H-14-((v-min)/range)*(H-40);
+  const segW=W/(pts.length-1);
+  ctx.beginPath();
+  pts.forEach((p,i)=>i===0?ctx.moveTo(i*segW,toY(p)):ctx.lineTo(i*segW,toY(p)));
+  ctx.lineTo((pts.length-1)*segW,H);ctx.lineTo(0,H);ctx.closePath();
+  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,d.color+'55');g.addColorStop(1,d.color+'00');
+  ctx.fillStyle=g;ctx.fill();
+  ctx.beginPath();
+  pts.forEach((p,i)=>i===0?ctx.moveTo(i*segW,toY(p)):ctx.lineTo(i*segW,toY(p)));
+  ctx.strokeStyle=d.color;ctx.lineWidth=2.5;ctx.shadowColor=d.color;ctx.shadowBlur=6;ctx.stroke();
+}
+miniData.forEach(drawMini);
+setInterval(()=>{miniData.forEach(d=>{const last=d.pts[d.pts.length-1];d.pts.push(last+(Math.random()-.5)*d.vol);d.pts.shift();drawMini(d);});},1500);
+
+// FLOAT NUMERI (dentro area schermo)
+const floatsEl=document.getElementById('floats');
+const fS=['+0.42%','+1.15%','-0.30%','+2.08%','-0.75%','+0.91%','+3.20%','-1.10%'];
+setInterval(()=>{
+  const el=document.createElement('div');
+  const txt=fS[Math.floor(Math.random()*fS.length)];
+  el.className='float-num';el.textContent=txt;
+  el.style.color=txt.startsWith('+')?'#00e696':'#ff4a5a';
+  el.style.left=(120+Math.random()*760)+'px';
+  el.style.top=(950+Math.random()*700)+'px';
+  el.style.animationDuration=(4+Math.random()*2)+'s';
+  floatsEl.appendChild(el);
+  setTimeout(()=>el.remove(),6000);
+},800);
+
+// PREZZI AGGIORNAMENTO
+const assets=[
+  {id:'rp-sp',base:5104,step:3,cId:'rp-sp-c',fmt:v=>v.toLocaleString('it-IT')},
+  {id:'rp-nq',base:18021,step:8,cId:'rp-nq-c',fmt:v=>v.toLocaleString('it-IT')},
+  {id:'rp-dw',base:38950,step:15,cId:'rp-dw-c',fmt:v=>v.toLocaleString('it-IT')},
+  {id:'rp-dx',base:17830,step:5,cId:'rp-dx-c',fmt:v=>v.toLocaleString('it-IT')},
+  {id:'rp-eu',base:1.0872,step:.0005,cId:'rp-eu-c',fmt:v=>v.toFixed(4)},
+  {id:'rp-gu',base:1.2648,step:.0004,cId:'rp-gu-c',fmt:v=>v.toFixed(4)},
+  {id:'rp-uj',base:151.42,step:.08,cId:'rp-uj-c',fmt:v=>v.toFixed(2)},
+  {id:'rp-sol',base:148.2,step:1,cId:'rp-sol-c',fmt:v=>v.toFixed(2)},
+  {id:'rp-xrp',base:0.524,step:.002,cId:'rp-xrp-c',fmt:v=>v.toFixed(4)},
+  {id:'rp-bnb',base:592.1,step:2,cId:'rp-bnb-c',fmt:v=>v.toFixed(2)},
+  {id:'lp-btc-p',base:67240,step:40,cId:'lp-btc-c',fmt:v=>v.toLocaleString('it-IT')},
+  {id:'lp-eth-p',base:3412,step:4,cId:'lp-eth-c',fmt:v=>v.toFixed(2)},
+  {id:'lp-gold-p',base:2351,step:2,cId:'lp-gold-c',fmt:v=>v.toLocaleString('it-IT')},
+  {id:'lp-oil-p',base:78.45,step:.15,cId:'lp-oil-c',fmt:v=>v.toFixed(2)},
+  {id:'lp-eu-p',base:1.0872,step:.0005,cId:'lp-eu-c',fmt:v=>v.toFixed(4)},
+  {id:'lp-nq-p',base:18021,step:8,cId:'lp-nq-c',fmt:v=>v.toLocaleString('it-IT')},
+];
+const cur={};assets.forEach(a=>cur[a.id]=a.base);
+setInterval(()=>{
+  assets.forEach(a=>{
+    const prev=cur[a.id], next=prev+(Math.random()-.5)*a.step*2;
+    cur[a.id]=next;
+    const el=document.getElementById(a.id), elC=document.getElementById(a.cId);
+    if(!el)return;
+    el.textContent=a.fmt(next);
+    const col=next>=prev?'#00e696':'#ff4a5a';
+    el.style.color=col;
+    if(elC){const pct=(((next-a.base)/a.base)*100).toFixed(2);elC.textContent=(pct>=0?'+':'')+pct+'%';elC.style.color=col;}
+  });
+},1800);
+
+// TICKER FOOTER
+const tickerItems=[
+  {n:'BTC/USD',v:'67.240',p:'+1.4%',up:true},{n:'ETH/USD',v:'3.412',p:'-0.8%',up:false},
+  {n:'SP500',v:'5.104',p:'+0.5%',up:true},{n:'NASDAQ',v:'18.021',p:'+0.7%',up:true},
+  {n:'DOW',v:'38.950',p:'-0.2%',up:false},{n:'GOLD',v:'2.351',p:'+0.3%',up:true},
+  {n:'OIL/WTI',v:'78.45',p:'+0.6%',up:true},{n:'EUR/USD',v:'1.0872',p:'-0.3%',up:false},
+  {n:'GBP/USD',v:'1.2648',p:'+0.1%',up:true},{n:'USD/JPY',v:'151.42',p:'+0.2%',up:true},
+  {n:'DAX',v:'17.830',p:'+0.4%',up:true},{n:'SOL',v:'148.20',p:'+2.1%',up:true},
+];
+const tickInner=document.getElementById('tick-inner');
+function buildTicker(items){
+  let h='';
+  items.forEach(it=>{const col=it.up?'#00e696':'#ff4a5a';const arr=it.up?'▲':'▼';
+    h+=`<div class="tick-item"><span class="tn">${it.n}</span><span class="tv">${it.v}</span><span class="tp" style="color:${col}">${arr} ${it.p}</span></div>`;});
+  return h+h;
+}
+tickInner.innerHTML=buildTicker(tickerItems);
+setInterval(()=>{tickerItems.forEach(it=>{if(Math.random()>.7)it.up=!it.up;});tickInner.innerHTML=buildTicker(tickerItems);},2500);
+
+// OROLOGIO
+function updateClock(){
+  const now=new Date();
+  const days=['DOM','LUN','MAR','MER','GIO','VEN','SAB'];
+  const months=['GEN','FEB','MAR','APR','MAG','GIU','LUG','AGO','SET','OTT','NOV','DIC'];
+  document.getElementById('clock-t').textContent=now.toTimeString().slice(0,8);
+  document.getElementById('clock-d').textContent=`${days[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]}`;
+}
+updateClock();setInterval(updateClock,1000);
+</script>
+</body>
+</html>
