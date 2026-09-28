@@ -9,13 +9,10 @@
   html,body{margin:0;padding:0;background:#060a12;font-family:'Segoe UI',Arial,sans-serif;overflow-x:hidden;}
   /* wrapper che scala per adattarsi a finestre piccole */
   #scaler{width:1080px;height:1920px;transform-origin:top left;position:relative;}
-  #stage{position:relative;width:1080px;height:1920px;overflow:hidden;background:#060a12;}
+  #stage{position:relative;width:1080px;height:1920px;overflow:hidden;background:transparent;}
 
-  /* SFONDO - dentro #bglayer che viene bucato con mask nei punti di cam e schermo */
-  #bglayer{position:absolute;inset:0;z-index:1;
-    -webkit-mask:var(--holes);mask:var(--holes);
-    -webkit-mask-composite:source-over;mask-composite:add;
-  }
+  /* SFONDO - dentro #bglayer che viene bucato con SVG mask (cam + schermo trasparenti) */
+  #bglayer{position:absolute;inset:0;z-index:1;-webkit-mask:url(#holeMask);mask:url(#holeMask);}
   #bg{position:absolute;inset:0;background:linear-gradient(180deg,#05070d 0%,#091220 50%,#0e1a2b 100%);}
   .grid-line{position:absolute;left:0;width:100%;height:1px;background:rgba(79,209,255,.06);}
   .grid-col{position:absolute;top:0;height:100%;width:1px;background:rgba(79,209,255,.05);}
@@ -44,39 +41,39 @@
   #topbar .sub{color:#4fd1ff;font-size:16px;margin-top:4px;letter-spacing:3px;text-transform:uppercase;text-shadow:0 0 14px rgba(79,209,255,.6);}
 
   /* PANNELLI LATERALI */
-  #left-panel{position:absolute;top:150px;left:14px;z-index:40;display:flex;flex-direction:column;gap:12px;width:200px;}
-  #right-panel{position:absolute;top:150px;right:14px;z-index:40;display:flex;flex-direction:column;gap:12px;width:200px;}
+  #left-panel{position:absolute;top:150px;left:14px;z-index:40;display:flex;flex-direction:column;gap:12px;width:224px;}
+  #right-panel{position:absolute;top:150px;right:14px;z-index:40;display:flex;flex-direction:column;gap:12px;width:224px;}
 
   .mini-chart{
-    width:200px;height:96px;background:rgba(6,12,22,.82);
-    border:1px solid rgba(79,209,255,.25);border-radius:12px;
+    width:224px;height:108px;background:rgba(6,12,22,.82);
+    border:1px solid rgba(79,209,255,.28);border-radius:12px;
     overflow:hidden;position:relative;
     box-shadow:0 0 16px rgba(0,0,0,.5);
   }
   .mc-top{
-    position:absolute;top:0;left:0;right:0;height:26px;
+    position:absolute;top:0;left:0;right:0;height:34px;
     display:flex;justify-content:space-between;align-items:center;
-    padding:0 9px;z-index:2;
+    padding:4px 10px 0;z-index:2;
     background:linear-gradient(180deg,rgba(6,12,22,.9),rgba(6,12,22,0));
   }
-  .mc-name{font-size:11px;font-weight:800;color:#8ba3b5;letter-spacing:.5px;}
-  .mc-right{display:flex;flex-direction:column;align-items:flex-end;line-height:1.15;}
-  .mc-price{font-size:11px;font-weight:800;}
-  .mc-pct{font-size:10px;font-weight:900;}
+  .mc-name{font-size:13px;font-weight:800;color:#a5bccc;letter-spacing:.5px;}
+  .mc-right{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2;}
+  .mc-price{font-size:13px;font-weight:800;}
+  .mc-pct{font-size:11px;font-weight:900;}
   .mcc{position:absolute;bottom:0;left:0;width:100%;height:100%;}
 
   .price-table{
-    width:200px;background:rgba(6,12,22,.85);
+    width:224px;background:rgba(6,12,22,.85);
     border:1px solid rgba(0,230,150,.25);border-radius:12px;
     padding:10px 0 6px;
     box-shadow:0 0 16px rgba(0,0,0,.5);
   }
-  .price-table h3{color:#00e696;font-size:11px;font-weight:800;margin:0 0 8px 12px;letter-spacing:2px;text-transform:uppercase;}
-  .pr{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:5px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.04);}
+  .price-table h3{color:#00e696;font-size:13px;font-weight:800;margin:0 0 8px 12px;letter-spacing:2px;text-transform:uppercase;}
+  .pr{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:6px 12px;font-size:14px;border-bottom:1px solid rgba(255,255,255,.05);}
   .pr:last-child{border-bottom:none;}
-  .pr .pn{color:#8ba3b5;font-weight:600;}
+  .pr .pn{color:#a5bccc;font-weight:600;}
   .pr .pv{font-weight:800;text-align:right;}
-  .pr .pc{font-size:10px;font-weight:800;text-align:right;min-width:46px;}
+  .pr .pc{font-size:12px;font-weight:800;text-align:right;min-width:48px;}
 
   /* WEBCAM */
   #webcam-frame{
@@ -143,14 +140,26 @@
 <body>
 <div id="scaler">
 <div id="stage">
+  <svg width="0" height="0" style="position:absolute;">
+    <defs>
+      <mask id="holeMask" maskUnits="userSpaceOnUse" x="0" y="0" width="1080" height="1920">
+        <rect x="0" y="0" width="1080" height="1920" fill="#fff"/>
+        <circle id="mask-cam" cx="540" cy="420" r="266" fill="#000"/>
+        <rect id="mask-scr" x="26" y="796" width="1028" height="1038" rx="16" fill="#000"/>
+      </mask>
+    </defs>
+  </svg>
+
+  <div id="bglayer">
   <div id="bg"></div>
   <div id="grid"></div>
   <div id="candles"></div>
-  <canvas id="chartcanvas" width="2376" height="1920"></canvas>
+  <canvas id="chartcanvas" width="3168" height="2560"></canvas>
   <div id="sparks"></div>
   <div id="floats"></div>
   <div id="vignette"></div>
   <div id="scanline"></div>
+  </div>
 
   <div id="topbar">
     <h1>NON SONO CONSIGLI FINANZIARI</h1>
@@ -161,19 +170,19 @@
   <div id="left-panel">
     <div class="mini-chart">
       <div class="mc-top"><span class="mc-name">BTC/USD</span><span class="mc-right"><span class="mc-price" id="lp-btc-p" style="color:#00e696">67.240</span><span class="mc-pct" id="lp-btc-c" style="color:#00e696">+1.4%</span></span></div>
-      <canvas class="mcc" data-base="500" data-vol="30" data-color="#00e696" width="400" height="192"></canvas>
+      <canvas class="mcc" data-base="500" data-vol="30" data-color="#00e696" width="600" height="270"></canvas>
     </div>
     <div class="mini-chart">
       <div class="mc-top"><span class="mc-name">ETH/USD</span><span class="mc-right"><span class="mc-price" id="lp-eth-p" style="color:#ff4a5a">3.412</span><span class="mc-pct" id="lp-eth-c" style="color:#ff4a5a">-0.8%</span></span></div>
-      <canvas class="mcc" data-base="110" data-vol="8" data-color="#ff4a5a" width="400" height="192"></canvas>
+      <canvas class="mcc" data-base="110" data-vol="8" data-color="#ff4a5a" width="600" height="270"></canvas>
     </div>
     <div class="mini-chart">
       <div class="mc-top"><span class="mc-name">GOLD</span><span class="mc-right"><span class="mc-price" id="lp-gold-p" style="color:#f5c842">2.351</span><span class="mc-pct" id="lp-gold-c" style="color:#f5c842">+0.3%</span></span></div>
-      <canvas class="mcc" data-base="140" data-vol="5" data-color="#f5c842" width="400" height="192"></canvas>
+      <canvas class="mcc" data-base="140" data-vol="5" data-color="#f5c842" width="600" height="270"></canvas>
     </div>
     <div class="mini-chart">
       <div class="mc-top"><span class="mc-name">OIL/WTI</span><span class="mc-right"><span class="mc-price" id="lp-oil-p" style="color:#ff8c42">78.45</span><span class="mc-pct" id="lp-oil-c" style="color:#ff8c42">+0.6%</span></span></div>
-      <canvas class="mcc" data-base="78" data-vol="4" data-color="#ff8c42" width="400" height="192"></canvas>
+      <canvas class="mcc" data-base="78" data-vol="4" data-color="#ff8c42" width="600" height="270"></canvas>
     </div>
     <div class="price-table">
       <h3>Crypto</h3>
@@ -200,11 +209,11 @@
     </div>
     <div class="mini-chart">
       <div class="mc-top"><span class="mc-name">EUR/USD</span><span class="mc-right"><span class="mc-price" id="lp-eu-p" style="color:#ff4a5a">1.0872</span><span class="mc-pct" id="lp-eu-c" style="color:#ff4a5a">-0.3%</span></span></div>
-      <canvas class="mcc" data-base="108" data-vol="2" data-color="#ff4a5a" width="400" height="192"></canvas>
+      <canvas class="mcc" data-base="108" data-vol="2" data-color="#ff4a5a" width="600" height="270"></canvas>
     </div>
     <div class="mini-chart">
       <div class="mc-top"><span class="mc-name">NASDAQ</span><span class="mc-right"><span class="mc-price" id="lp-nq-p" style="color:#00e696">18.021</span><span class="mc-pct" id="lp-nq-c" style="color:#00e696">+0.7%</span></span></div>
-      <canvas class="mcc" data-base="180" data-vol="12" data-color="#00e696" width="400" height="192"></canvas>
+      <canvas class="mcc" data-base="180" data-vol="12" data-color="#00e696" width="600" height="270"></canvas>
     </div>
   </div>
 
@@ -235,6 +244,26 @@ function fitScale(){
 window.addEventListener('resize',fitScale);
 fitScale();
 
+// MASK: buca lo sfondo animato dove ci sono cam (cerchio) e schermo (rettangolo).
+// Le posizioni sono fisse in coordinate 1080x1920 native (i frame usano quelle).
+function applyHoles(){
+  const cam=document.getElementById('webcam-frame');
+  const scr=document.getElementById('screen-frame');
+  // leggo dal CSS le posizioni native
+  const camTop=parseInt(getComputedStyle(cam).top);   // 150
+  const camW=parseInt(getComputedStyle(cam).width);    // 540
+  const scrTop=parseInt(getComputedStyle(scr).top);    // 790
+  const scrW=parseInt(getComputedStyle(scr).width);    // 1040
+  const scrH=parseInt(getComputedStyle(scr).height);   // 1050
+  const cx=540, cy=camTop+camW/2, rad=camW/2-4;
+  const rx=(1080-scrW)/2+6, ry=scrTop+6, rw=scrW-12, rh=scrH-12;
+  const mc=document.getElementById('mask-cam');
+  mc.setAttribute('cx',cx); mc.setAttribute('cy',cy); mc.setAttribute('r',rad);
+  const ms=document.getElementById('mask-scr');
+  ms.setAttribute('x',rx); ms.setAttribute('y',ry); ms.setAttribute('width',rw); ms.setAttribute('height',rh);
+}
+setTimeout(applyHoles,50);
+
 // GRIGLIA
 const gridEl=document.getElementById('grid');
 for(let i=0;i<22;i++){const l=document.createElement('div');l.className='grid-line';l.style.top=(i*88)+'px';gridEl.appendChild(l);}
@@ -261,12 +290,13 @@ candlesEl.innerHTML=chtml+chtml;
 // GRAFICO SFONDO
 const bgCanvas=document.getElementById('chartcanvas'), bgCtx=bgCanvas.getContext('2d');
 (function(){
-  const pts=[];let y=1500;const sw=bgCanvas.width/2/80;
-  for(let i=0;i<=80;i++){y+=(Math.random()-.47)*70;y=Math.max(1100,Math.min(1800,y));pts.push(y);}
+  const H=bgCanvas.height;
+  const pts=[];let y=H*0.78;const sw=bgCanvas.width/2/80;
+  for(let i=0;i<=80;i++){y+=(Math.random()-.47)*95;y=Math.max(H*0.57,Math.min(H*0.94,y));pts.push(y);}
   for(let rep=0;rep<2;rep++){
     bgCtx.beginPath();
     pts.forEach((py,i)=>{const x=rep*(bgCanvas.width/2)+i*sw;i===0?bgCtx.moveTo(x,py):bgCtx.lineTo(x,py);});
-    bgCtx.strokeStyle='rgba(79,209,255,0.3)';bgCtx.lineWidth=3;bgCtx.shadowColor='#4fd1ff';bgCtx.shadowBlur=10;bgCtx.stroke();
+    bgCtx.lineJoin='round';bgCtx.strokeStyle='rgba(79,209,255,0.35)';bgCtx.lineWidth=4;bgCtx.shadowColor='#4fd1ff';bgCtx.shadowBlur=14;bgCtx.stroke();
   }
 })();
 
@@ -282,34 +312,24 @@ function drawMini(d){
   const ctx=d.canvas.getContext('2d'),W=d.canvas.width,H=d.canvas.height;
   ctx.clearRect(0,0,W,H);
   const pts=d.pts,min=Math.min(...pts),max=Math.max(...pts),range=max-min||1;
-  const toY=v=>H-14-((v-min)/range)*(H-40);
+  const pad=Math.round(H*0.14);
+  const toY=v=>H-pad-((v-min)/range)*(H-pad*2.2);
   const segW=W/(pts.length-1);
   ctx.beginPath();
   pts.forEach((p,i)=>i===0?ctx.moveTo(i*segW,toY(p)):ctx.lineTo(i*segW,toY(p)));
   ctx.lineTo((pts.length-1)*segW,H);ctx.lineTo(0,H);ctx.closePath();
-  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,d.color+'55');g.addColorStop(1,d.color+'00');
+  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,d.color+'66');g.addColorStop(1,d.color+'00');
   ctx.fillStyle=g;ctx.fill();
   ctx.beginPath();
   pts.forEach((p,i)=>i===0?ctx.moveTo(i*segW,toY(p)):ctx.lineTo(i*segW,toY(p)));
-  ctx.strokeStyle=d.color;ctx.lineWidth=2.5;ctx.shadowColor=d.color;ctx.shadowBlur=6;ctx.stroke();
+  ctx.lineJoin='round';ctx.lineCap='round';
+  ctx.strokeStyle=d.color;ctx.lineWidth=4;ctx.shadowColor=d.color;ctx.shadowBlur=10;ctx.stroke();
+  ctx.shadowBlur=0;
 }
 miniData.forEach(drawMini);
 setInterval(()=>{miniData.forEach(d=>{const last=d.pts[d.pts.length-1];d.pts.push(last+(Math.random()-.5)*d.vol);d.pts.shift();drawMini(d);});},1500);
 
-// FLOAT NUMERI (dentro area schermo)
-const floatsEl=document.getElementById('floats');
-const fS=['+0.42%','+1.15%','-0.30%','+2.08%','-0.75%','+0.91%','+3.20%','-1.10%'];
-setInterval(()=>{
-  const el=document.createElement('div');
-  const txt=fS[Math.floor(Math.random()*fS.length)];
-  el.className='float-num';el.textContent=txt;
-  el.style.color=txt.startsWith('+')?'#00e696':'#ff4a5a';
-  el.style.left=(120+Math.random()*760)+'px';
-  el.style.top=(950+Math.random()*700)+'px';
-  el.style.animationDuration=(4+Math.random()*2)+'s';
-  floatsEl.appendChild(el);
-  setTimeout(()=>el.remove(),6000);
-},800);
+// (numeri fluttuanti rimossi: l'area schermo resta pulita per la tua schermata)
 
 // PREZZI AGGIORNAMENTO
 const assets=[
