@@ -1,397 +1,461 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=1080, initial-scale=1">
-<title>Live Trading Room</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>España en el siglo XVII y el Barroco: explicación en audio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Alegreya:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <style>
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;background:#060a12;font-family:'Segoe UI',Arial,sans-serif;overflow-x:hidden;}
-  /* wrapper che scala per adattarsi a finestre piccole */
-  #scaler{width:1080px;height:1920px;transform-origin:top left;position:relative;}
-  #stage{position:relative;width:1080px;height:1920px;overflow:hidden;background:transparent;}
-
-  /* SFONDO - dentro #bglayer che viene bucato con SVG mask (cam + schermo trasparenti) */
-  #bglayer{position:absolute;inset:0;z-index:1;-webkit-mask:url(#holeMask);mask:url(#holeMask);}
-  #bg{position:absolute;inset:0;background:linear-gradient(180deg,#05070d 0%,#091220 50%,#0e1a2b 100%);}
-  .grid-line{position:absolute;left:0;width:100%;height:1px;background:rgba(79,209,255,.06);}
-  .grid-col{position:absolute;top:0;height:100%;width:1px;background:rgba(79,209,255,.05);}
-
-  #candles{position:absolute;bottom:0;left:0;width:220%;height:1920px;display:flex;align-items:flex-end;animation:scrollC 16s linear infinite;}
-  .candle{position:relative;width:22px;margin:0 7px;flex-shrink:0;}
-  @keyframes scrollC{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-
-  #chartcanvas{position:absolute;top:0;left:0;width:220%;height:1920px;animation:scrollC 16s linear infinite;}
-
-  .float-num{position:absolute;font-weight:800;font-size:20px;opacity:0;pointer-events:none;animation:floatUp 5s ease-out infinite;z-index:4;}
-  @keyframes floatUp{0%{opacity:0;transform:translateY(0)}15%{opacity:1}85%{opacity:.8}100%{opacity:0;transform:translateY(-220px)}}
-
-  .spark{position:absolute;width:2px;height:2px;border-radius:50%;background:#4fd1ff;animation:twinkle 3s infinite ease-in-out;}
-  @keyframes twinkle{0%,100%{opacity:.1}50%{opacity:.8}}
-
-  #vignette{position:absolute;inset:0;box-shadow:inset 0 0 240px 100px rgba(0,0,0,.65);pointer-events:none;z-index:5;}
-  #scanline{position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(255,255,255,.015) 0 2px,transparent 2px 4px);pointer-events:none;z-index:5;mix-blend-mode:overlay;}
-
-  /* TOPBAR */
-  #topbar{position:absolute;top:26px;left:0;width:100%;text-align:center;z-index:50;}
-  #topbar h1{
-    color:#fff;font-size:38px;margin:0;letter-spacing:1px;font-weight:900;
-    text-shadow:0 0 30px rgba(0,230,150,.8),0 0 60px rgba(0,230,150,.3),0 2px 8px rgba(0,0,0,.9);
+:root{
+  --bg:#E3E6DD; --paper:#EEF0E8; --ink:#1E2A2F; --muted:#56635E; --gold:#8C6414;
+  --line:#C3C9BC; --hl:#EAD9A2; --seal:#6B1E2A; --seal-ink:#F6EEE4;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#151C1F; --paper:#1C2428; --ink:#E5E2D5; --muted:#9BA49D; --gold:#D6AA4E;
+    --line:#314047; --hl:#4B4020; --seal:#8E2B3A; --seal-ink:#F6EEE4;
   }
-  #topbar .sub{color:#4fd1ff;font-size:16px;margin-top:4px;letter-spacing:3px;text-transform:uppercase;text-shadow:0 0 14px rgba(79,209,255,.6);}
+}
+:root[data-theme="dark"]{
+  --bg:#151C1F; --paper:#1C2428; --ink:#E5E2D5; --muted:#9BA49D; --gold:#D6AA4E;
+  --line:#314047; --hl:#4B4020; --seal:#8E2B3A; --seal-ink:#F6EEE4;
+}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 1.5rem)}
+*,*::before,*::after{box-sizing:inherit}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"Alegreya",Georgia,"Times New Roman",serif;
+  font-size:1.125rem; line-height:1.7;
+  -webkit-font-smoothing:antialiased;
+}
+button,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:4px}
 
-  /* PANNELLI LATERALI */
-  #left-panel{position:absolute;top:150px;left:14px;z-index:40;display:flex;flex-direction:column;gap:12px;width:224px;}
-  #right-panel{position:absolute;top:150px;right:14px;z-index:40;display:flex;flex-direction:column;gap:12px;width:224px;}
+.hero{max-width:1100px;margin:0 auto;padding:3.5rem 1.25rem 2rem}
+.hero h1{
+  font-family:"IM Fell English",Georgia,serif; font-weight:400;
+  font-size:clamp(2.3rem,6.2vw,4.4rem); line-height:1.02; letter-spacing:-.01em;
+  margin:0 0 1rem; max-width:16ch;
+}
+.hero p{margin:0;max-width:58ch;color:var(--muted);font-size:1.2rem}
+.status{margin-top:1.25rem;font-size:.98rem;color:var(--muted);max-width:62ch}
+.status.warn{color:var(--ink);border-left:3px solid var(--gold);padding-left:.75rem}
 
-  .mini-chart{
-    width:224px;height:108px;background:rgba(6,12,22,.82);
-    border:1px solid rgba(79,209,255,.28);border-radius:12px;
-    overflow:hidden;position:relative;
-    box-shadow:0 0 16px rgba(0,0,0,.5);
-  }
-  .mc-top{
-    position:absolute;top:0;left:0;right:0;height:34px;
-    display:flex;justify-content:space-between;align-items:center;
-    padding:4px 10px 0;z-index:2;
-    background:linear-gradient(180deg,rgba(6,12,22,.9),rgba(6,12,22,0));
-  }
-  .mc-name{font-size:13px;font-weight:800;color:#a5bccc;letter-spacing:.5px;}
-  .mc-right{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2;}
-  .mc-price{font-size:13px;font-weight:800;}
-  .mc-pct{font-size:11px;font-weight:900;}
-  .mcc{position:absolute;bottom:0;left:0;width:100%;height:100%;}
+.wrap{
+  max-width:1100px;margin:0 auto;padding:0 1.25rem 10rem;
+  display:grid;grid-template-columns:250px minmax(0,1fr);gap:3rem;
+}
+aside{position:sticky;top:1.5rem;align-self:start;max-height:calc(100vh - 11rem);overflow:auto}
+aside summary{font-family:"IM Fell English",Georgia,serif;font-size:1.25rem;cursor:pointer;margin-bottom:.5rem}
+.toc{list-style:none;margin:0;padding:0;border-left:1px solid var(--line)}
+.toc button{
+  display:block;width:100%;text-align:left;background:none;border:0;cursor:pointer;
+  padding:.3rem .75rem;font-size:.98rem;line-height:1.35;color:var(--muted);
+  border-left:3px solid transparent;margin-left:-2px;
+}
+.toc button:hover{color:var(--ink)}
+.toc button[aria-current="true"]{color:var(--ink);border-left-color:var(--gold);font-weight:600}
 
-  .price-table{
-    width:224px;background:rgba(6,12,22,.85);
-    border:1px solid rgba(0,230,150,.25);border-radius:12px;
-    padding:10px 0 6px;
-    box-shadow:0 0 16px rgba(0,0,0,.5);
-  }
-  .price-table h3{color:#00e696;font-size:13px;font-weight:800;margin:0 0 8px 12px;letter-spacing:2px;text-transform:uppercase;}
-  .pr{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:6px 12px;font-size:14px;border-bottom:1px solid rgba(255,255,255,.05);}
-  .pr:last-child{border-bottom:none;}
-  .pr .pn{color:#a5bccc;font-weight:600;}
-  .pr .pv{font-weight:800;text-align:right;}
-  .pr .pc{font-size:12px;font-weight:800;text-align:right;min-width:48px;}
+main{max-width:68ch}
+.ch{padding-bottom:2.25rem;margin-bottom:2.25rem;border-bottom:1px solid var(--line)}
+.ch:last-child{border-bottom:0}
+.ch h2{
+  font-family:"IM Fell English",Georgia,serif;font-weight:400;
+  font-size:1.85rem;line-height:1.15;margin:0 0 1rem;display:flex;gap:.75rem;align-items:baseline;
+}
+.ch h2 .n{font-style:italic;color:var(--gold);font-size:1.3rem;min-width:1.6rem}
+.ch p{margin:0 0 1rem}
+.s{cursor:pointer;border-radius:3px;transition:background-color .2s}
+.s:hover{text-decoration:underline dotted var(--gold);text-underline-offset:4px}
+.s.now{background:var(--hl);-webkit-box-decoration-break:clone;box-decoration-break:clone;padding:0 .12em;margin:0 -.12em}
 
-  /* WEBCAM */
-  #webcam-frame{
-    position:absolute;top:150px;left:50%;transform:translateX(-50%);
-    width:540px;height:540px;border-radius:999px;
-    background:transparent;
-    border:5px solid #00e696;
-    box-shadow:0 0 0 3px rgba(0,0,0,.6),0 0 50px rgba(0,230,150,.5),0 0 100px rgba(0,230,150,.15);
-    z-index:45;
-  }
-  #webcam-frame .label{
-    position:absolute;bottom:-38px;left:50%;transform:translateX(-50%);
-    background:#00e696;color:#04160f;font-weight:900;font-size:15px;
-    padding:5px 20px;border-radius:20px;letter-spacing:1px;white-space:nowrap;
-    box-shadow:0 4px 12px rgba(0,0,0,.5);
-  }
+.player{
+  position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--paper);
+  border-top:1px solid var(--line);
+  padding:.7rem 1rem calc(.7rem + env(safe-area-inset-bottom,0px));
+}
+.bar{position:absolute;top:-1px;left:0;height:3px;background:var(--gold);width:0;transition:width .3s}
+.player-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:1.1rem;align-items:center}
+.controls{display:flex;align-items:center;gap:.4rem}
+.ghost{
+  width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:transparent;
+  display:grid;place-items:center;cursor:pointer;
+}
+.ghost:hover{border-color:var(--gold)}
+.seal{
+  width:64px;height:64px;border-radius:50%;border:0;cursor:pointer;
+  background:var(--seal);color:var(--seal-ink);display:grid;place-items:center;
+  box-shadow:inset 0 0 0 4px rgba(255,255,255,.14),inset 0 0 0 8px rgba(0,0,0,.14),0 2px 6px rgba(0,0,0,.18);
+}
+.seal:disabled{opacity:.45;cursor:not-allowed}
+.now-playing{min-width:0}
+.now-playing .where{font-size:.9rem;color:var(--muted);margin:0}
+.now-playing .title{margin:0;font-family:"IM Fell English",Georgia,serif;font-size:1.2rem;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.settings{display:flex;gap:.75rem;align-items:center}
+.settings label{display:flex;flex-direction:column;font-size:.8rem;color:var(--muted);gap:.15rem}
+.settings select{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:.3rem .4rem;font-size:.95rem;max-width:12rem}
+.foot{color:var(--muted);font-size:.95rem;margin-top:1rem}
 
-  /* SCHERMO */
-  #screen-frame{
-    position:absolute;top:790px;left:50%;transform:translateX(-50%);
-    width:1040px;height:1050px;border-radius:20px;
-    background:transparent;
-    border:5px solid #4fd1ff;
-    box-shadow:0 0 0 3px rgba(0,0,0,.6),0 0 50px rgba(79,209,255,.45),0 0 100px rgba(79,209,255,.1);
-    z-index:45;
-  }
-  #screen-frame .label{
-    position:absolute;top:-38px;left:50%;transform:translateX(-50%);
-    background:#4fd1ff;color:#031b22;font-weight:900;font-size:15px;
-    padding:5px 20px;border-radius:20px;letter-spacing:1px;white-space:nowrap;
-    box-shadow:0 4px 12px rgba(0,0,0,.5);
-  }
-
-  #clock{
-    position:absolute;bottom:78px;right:22px;z-index:48;
-    background:rgba(6,12,20,.85);border:1px solid rgba(79,209,255,.3);
-    border-radius:10px;padding:6px 14px;text-align:right;
-  }
-  #clock .t{color:#4fd1ff;font-size:20px;font-weight:800;letter-spacing:2px;}
-  #clock .d{color:#4a6070;font-size:11px;letter-spacing:1px;}
-
-  #ticker{
-    position:absolute;bottom:0;left:0;width:100%;height:66px;
-    background:rgba(4,8,14,.88);
-    display:flex;align-items:center;overflow:hidden;z-index:50;
-    border-top:3px solid #00e696;
-  }
-  .tick-label{
-    flex-shrink:0;padding:0 16px;color:#00e696;font-weight:900;font-size:17px;letter-spacing:1px;
-    border-right:2px solid rgba(0,230,150,.4);white-space:nowrap;
-  }
-  .tick-scroll{flex:1;overflow:hidden;position:relative;height:100%;}
-  .tick-inner{
-    display:inline-flex;white-space:nowrap;gap:44px;height:100%;align-items:center;padding-left:20px;
-    animation:tickMove 32s linear infinite;
-  }
-  .tick-item{font-size:18px;font-weight:700;color:#cfe8f5;display:inline-flex;align-items:center;gap:8px;flex-shrink:0;}
-  .tick-item .tn{color:#8ba3b5;font-weight:600;font-size:16px;}
-  .tick-item .tv{font-weight:900;}
-  .tick-item .tp{font-size:15px;font-weight:800;}
-  @keyframes tickMove{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media (max-width:860px){
+  .wrap{grid-template-columns:1fr;gap:1.5rem}
+  aside{position:static;max-height:none}
+  .player-inner{grid-template-columns:auto minmax(0,1fr)}
+  .settings{grid-column:1 / -1;justify-content:flex-start}
+  .wrap{padding-bottom:13rem}
+  .hero{padding-top:2.25rem}
+}
+@media (prefers-reduced-motion:reduce){ .bar,.s{transition:none} }
 </style>
 </head>
 <body>
-<div id="scaler">
-<div id="stage">
-  <svg width="0" height="0" style="position:absolute;">
-    <defs>
-      <mask id="holeMask" maskUnits="userSpaceOnUse" x="0" y="0" width="1080" height="1920">
-        <rect x="0" y="0" width="1080" height="1920" fill="#fff"/>
-        <circle id="mask-cam" cx="540" cy="420" r="266" fill="#000"/>
-        <rect id="mask-scr" x="26" y="796" width="1028" height="1038" rx="16" fill="#000"/>
-      </mask>
-    </defs>
-  </svg>
 
-  <div id="bglayer">
-  <div id="bg"></div>
-  <div id="grid"></div>
-  <div id="candles"></div>
-  <canvas id="chartcanvas" width="3168" height="2560"></canvas>
-  <div id="sparks"></div>
-  <div id="floats"></div>
-  <div id="vignette"></div>
-  <div id="scanline"></div>
-  </div>
+<header class="hero">
+  <h1>España en el siglo XVII y el Barroco</h1>
+  <p>Todo el tema explicado en voz alta, en español: la crisis de los Austrias menores, el Barroco, Quevedo y Góngora. Pulsa el botón rojo para empezar, o toca cualquier frase para escucharla desde ahí.</p>
+  <p class="status" id="status" role="status">Preparando la voz…</p>
+</header>
 
-  <div id="topbar">
-    <h1>NON SONO CONSIGLI FINANZIARI</h1>
-    <div class="sub">analisi mercati in tempo reale</div>
-  </div>
-
-  <!-- SINISTRA -->
-  <div id="left-panel">
-    <div class="mini-chart">
-      <div class="mc-top"><span class="mc-name">BTC/USD</span><span class="mc-right"><span class="mc-price" id="lp-btc-p" style="color:#00e696">67.240</span><span class="mc-pct" id="lp-btc-c" style="color:#00e696">+1.4%</span></span></div>
-      <canvas class="mcc" data-base="500" data-vol="30" data-color="#00e696" width="600" height="270"></canvas>
-    </div>
-    <div class="mini-chart">
-      <div class="mc-top"><span class="mc-name">ETH/USD</span><span class="mc-right"><span class="mc-price" id="lp-eth-p" style="color:#ff4a5a">3.412</span><span class="mc-pct" id="lp-eth-c" style="color:#ff4a5a">-0.8%</span></span></div>
-      <canvas class="mcc" data-base="110" data-vol="8" data-color="#ff4a5a" width="600" height="270"></canvas>
-    </div>
-    <div class="mini-chart">
-      <div class="mc-top"><span class="mc-name">GOLD</span><span class="mc-right"><span class="mc-price" id="lp-gold-p" style="color:#f5c842">2.351</span><span class="mc-pct" id="lp-gold-c" style="color:#f5c842">+0.3%</span></span></div>
-      <canvas class="mcc" data-base="140" data-vol="5" data-color="#f5c842" width="600" height="270"></canvas>
-    </div>
-    <div class="mini-chart">
-      <div class="mc-top"><span class="mc-name">OIL/WTI</span><span class="mc-right"><span class="mc-price" id="lp-oil-p" style="color:#ff8c42">78.45</span><span class="mc-pct" id="lp-oil-c" style="color:#ff8c42">+0.6%</span></span></div>
-      <canvas class="mcc" data-base="78" data-vol="4" data-color="#ff8c42" width="600" height="270"></canvas>
-    </div>
-    <div class="price-table">
-      <h3>Crypto</h3>
-      <div class="pr"><span class="pn">SOL</span><span class="pv" id="rp-sol" style="color:#00e696">148.20</span><span class="pc" id="rp-sol-c" style="color:#00e696">+2.1%</span></div>
-      <div class="pr"><span class="pn">XRP</span><span class="pv" id="rp-xrp" style="color:#ff4a5a">0.5240</span><span class="pc" id="rp-xrp-c" style="color:#ff4a5a">-0.5%</span></div>
-      <div class="pr"><span class="pn">BNB</span><span class="pv" id="rp-bnb" style="color:#00e696">592.10</span><span class="pc" id="rp-bnb-c" style="color:#00e696">+0.9%</span></div>
-    </div>
-  </div>
-
-  <!-- DESTRA -->
-  <div id="right-panel">
-    <div class="price-table">
-      <h3>Indici</h3>
-      <div class="pr"><span class="pn">SP500</span><span class="pv" id="rp-sp" style="color:#00e696">5.104</span><span class="pc" id="rp-sp-c" style="color:#00e696">+0.5%</span></div>
-      <div class="pr"><span class="pn">NASDAQ</span><span class="pv" id="rp-nq" style="color:#00e696">18.021</span><span class="pc" id="rp-nq-c" style="color:#00e696">+0.7%</span></div>
-      <div class="pr"><span class="pn">DOW</span><span class="pv" id="rp-dw" style="color:#ff4a5a">38.950</span><span class="pc" id="rp-dw-c" style="color:#ff4a5a">-0.2%</span></div>
-      <div class="pr"><span class="pn">DAX</span><span class="pv" id="rp-dx" style="color:#00e696">17.830</span><span class="pc" id="rp-dx-c" style="color:#00e696">+0.4%</span></div>
-    </div>
-    <div class="price-table">
-      <h3>Forex</h3>
-      <div class="pr"><span class="pn">EUR/USD</span><span class="pv" id="rp-eu" style="color:#ff4a5a">1.0872</span><span class="pc" id="rp-eu-c" style="color:#ff4a5a">-0.3%</span></div>
-      <div class="pr"><span class="pn">GBP/USD</span><span class="pv" id="rp-gu" style="color:#00e696">1.2648</span><span class="pc" id="rp-gu-c" style="color:#00e696">+0.1%</span></div>
-      <div class="pr"><span class="pn">USD/JPY</span><span class="pv" id="rp-uj" style="color:#00e696">151.42</span><span class="pc" id="rp-uj-c" style="color:#00e696">+0.2%</span></div>
-    </div>
-    <div class="mini-chart">
-      <div class="mc-top"><span class="mc-name">EUR/USD</span><span class="mc-right"><span class="mc-price" id="lp-eu-p" style="color:#ff4a5a">1.0872</span><span class="mc-pct" id="lp-eu-c" style="color:#ff4a5a">-0.3%</span></span></div>
-      <canvas class="mcc" data-base="108" data-vol="2" data-color="#ff4a5a" width="600" height="270"></canvas>
-    </div>
-    <div class="mini-chart">
-      <div class="mc-top"><span class="mc-name">NASDAQ</span><span class="mc-right"><span class="mc-price" id="lp-nq-p" style="color:#00e696">18.021</span><span class="mc-pct" id="lp-nq-c" style="color:#00e696">+0.7%</span></span></div>
-      <canvas class="mcc" data-base="180" data-vol="12" data-color="#00e696" width="600" height="270"></canvas>
-    </div>
-  </div>
-
-  <div id="webcam-frame"><div class="label">🎙 IN DIRETTA</div></div>
-  <div id="screen-frame"><div class="label">📊 GRAFICO / PIATTAFORMA</div></div>
-
-  <div id="clock">
-    <div class="t" id="clock-t">00:00:00</div>
-    <div class="d" id="clock-d">LUN 28 SET</div>
-  </div>
-
-  <div id="ticker">
-    <div class="tick-label">📈 LIVE</div>
-    <div class="tick-scroll"><div class="tick-inner" id="tick-inner"></div></div>
-  </div>
+<div class="wrap">
+  <aside>
+    <details id="tocBox" open>
+      <summary>Índice</summary>
+      <ol class="toc" id="toc"></ol>
+    </details>
+  </aside>
+  <main id="text"></main>
 </div>
+
+<div class="player" role="region" aria-label="Reproductor">
+  <div class="bar" id="bar"></div>
+  <div class="player-inner">
+    <div class="controls">
+      <button class="ghost" id="prev" aria-label="Apartado anterior">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>
+      </button>
+      <button class="seal" id="play" aria-label="Reproducir">
+        <svg id="icoPlay" width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        <svg id="icoPause" width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="display:none"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+      </button>
+      <button class="ghost" id="next" aria-label="Apartado siguiente">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg>
+      </button>
+    </div>
+    <div class="now-playing">
+      <p class="where" id="where">Apartado 1 de 17</p>
+      <p class="title" id="ptitle"></p>
+    </div>
+    <div class="settings">
+      <label>Velocidad
+        <select id="rate">
+          <option value="0.8">0,8×</option>
+          <option value="0.9" selected>0,9×</option>
+          <option value="1">1×</option>
+          <option value="1.1">1,1×</option>
+          <option value="1.25">1,25×</option>
+        </select>
+      </label>
+      <label>Voz
+        <select id="voice"><option value="">Predeterminada</option></select>
+      </label>
+    </div>
+  </div>
 </div>
 
 <script>
-// SCALER: adatta l'overlay alla larghezza della finestra (per anteprima browser). In OBS resta 1080x1920.
-function fitScale(){
-  const s=document.getElementById('scaler');
-  const w=window.innerWidth, h=window.innerHeight;
-  const scale=Math.min(w/1080, h/1920);
-  s.style.transform='scale('+scale+')';
-  document.body.style.height=(1920*scale)+'px';
-}
-window.addEventListener('resize',fitScale);
-fitScale();
+const CH = [
+{t:`Introducción`, p:[
+`Hola. En esta explicación vamos a repasar juntos todo el tema. Primero, la crisis de España en el siglo diecisiete. Después, el Barroco como movimiento literario. Y, por último, los dos grandes poetas de la época: Francisco de Quevedo y Luis de Góngora.`,
+`Escucha con calma. Puedes pausar cuando quieras, repetir un apartado o tocar una frase para volver a escucharla. Empezamos.`]},
 
-// MASK: buca lo sfondo animato dove ci sono cam (cerchio) e schermo (rettangolo).
-// Le posizioni sono fisse in coordinate 1080x1920 native (i frame usano quelle).
-function applyHoles(){
-  const cam=document.getElementById('webcam-frame');
-  const scr=document.getElementById('screen-frame');
-  // leggo dal CSS le posizioni native
-  const camTop=parseInt(getComputedStyle(cam).top);   // 150
-  const camW=parseInt(getComputedStyle(cam).width);    // 540
-  const scrTop=parseInt(getComputedStyle(scr).top);    // 790
-  const scrW=parseInt(getComputedStyle(scr).width);    // 1040
-  const scrH=parseInt(getComputedStyle(scr).height);   // 1050
-  const cx=540, cy=camTop+camW/2, rad=camW/2-4;
-  const rx=(1080-scrW)/2+6, ry=scrTop+6, rw=scrW-12, rh=scrH-12;
-  const mc=document.getElementById('mask-cam');
-  mc.setAttribute('cx',cx); mc.setAttribute('cy',cy); mc.setAttribute('r',rad);
-  const ms=document.getElementById('mask-scr');
-  ms.setAttribute('x',rx); ms.setAttribute('y',ry); ms.setAttribute('width',rw); ms.setAttribute('height',rh);
-}
-setTimeout(applyHoles,50);
+{t:`La crisis general de España`, p:[
+`Durante el siglo diecisiete, España vivió una profunda decadencia. Fue una crisis económica, demográfica y política, es decir, afectó al dinero, a la población y al gobierno. Como consecuencia, España perdió su hegemonía en Europa, o sea, dejó de ser la potencia dominante.`,
+`¿Por qué ocurrió? Hay tres causas principales. La primera, las continuas guerras en el extranjero, que costaban muchísimo dinero y muchas vidas. La segunda, las revueltas y los conflictos internos dentro de la propia monarquía. Y la tercera, el final de la dinastía de los Austrias, que se extinguió al terminar el siglo.`,
+`Recuerda esta idea clave: el siglo diecisiete es, para España, el siglo de la decadencia.`]},
 
-// GRIGLIA
-const gridEl=document.getElementById('grid');
-for(let i=0;i<22;i++){const l=document.createElement('div');l.className='grid-line';l.style.top=(i*88)+'px';gridEl.appendChild(l);}
-for(let i=0;i<10;i++){const c=document.createElement('div');c.className='grid-col';c.style.left=(i*120)+'px';gridEl.appendChild(c);}
+{t:`Felipe III y el duque de Lerma`, p:[
+`Los reyes de este siglo se conocen como los Austrias menores, para distinguirlos de los Austrias mayores del siglo dieciséis, que fueron Carlos Primero y Felipe Segundo. Los Austrias menores son tres: Felipe Tercero, Felipe Cuarto y Carlos Segundo.`,
+`Un rasgo común de sus reinados es el gobierno de los validos. Un valido era un hombre de confianza del rey, un favorito, al que el monarca entregaba el poder real del gobierno.`,
+`Empecemos por Felipe Tercero, que reinó de 1598 a 1621. Felipe Tercero dejó el poder en manos de su valido, el duque de Lerma. El rey se desinteresó de la política y se dedicó sobre todo a la religión y a las diversiones.`,
+`¿Cuál fue el gran problema de este reinado? La venta de cargos públicos. Los puestos de la administración se compraban con dinero, y eso provocó corrupción y una crisis moral. En política exterior, España no perdió territorios durante su reinado, pero sí perdió fuerza y prestigio internacional.`]},
 
-// PARTICELLE
-const sparksEl=document.getElementById('sparks');
-for(let i=0;i<60;i++){const s=document.createElement('div');s.className='spark';s.style.left=Math.random()*1080+'px';s.style.top=Math.random()*1920+'px';s.style.animationDelay=(Math.random()*3)+'s';sparksEl.appendChild(s);}
+{t:`Felipe IV y el conde-duque de Olivares`, p:[
+`El siguiente rey fue Felipe Cuarto, que reinó de 1621 a 1665. Su valido fue el conde-duque de Olivares, un hombre ambicioso y autoritario. Olivares quería recuperar la grandeza de España, pero muchas de sus decisiones tuvieron consecuencias negativas.`,
+`Veamos primero las guerras. Se reanudó la guerra en los Países Bajos. En 1625 se produjo la rendición de Breda ante las tropas españolas, una victoria famosa que Velázquez pintó en el cuadro Las lanzas. Sin embargo, a largo plazo, España terminó perdiendo los Países Bajos del norte, que fueron reconocidos como independientes en 1648.`,
+`También hubo guerra contra Francia. Este conflicto terminó con la Paz de los Pirineos, en 1659, por la que España cedió varios territorios a Francia.`,
+`Ahora, la crisis interna. Para pagar tantas guerras aumentaron los impuestos, y eso provocó revueltas. En 1640 ocurrieron dos hechos muy graves: Portugal se sublevó y se separó de España, y estalló el grave conflicto de Cataluña.`,
+`En los últimos años del reinado, Olivares fue sustituido por un nuevo valido, don Luis de Haro, pero la crisis interna continuó.`]},
 
-// CANDELE SFONDO
-const candlesEl=document.getElementById('candles');
-let chtml='';
-for(let i=0;i<80;i++){
-  const up=Math.random()>0.45;
-  const bH=20+Math.random()*110, wH=bH+15+Math.random()*50;
-  const col=up?'#00e696':'#ff4a5a';
-  chtml+=`<div class="candle" style="height:${wH}px;">
-    <div style="height:${wH}px;background:${col}55;bottom:0;left:50%;transform:translateX(-50%);width:2px;position:absolute;"></div>
-    <div style="height:${bH}px;background:${col}44;bottom:${(wH-bH)/2}px;left:0;width:100%;box-shadow:0 0 8px ${col}66;border-radius:2px;position:absolute;"></div>
-  </div>`;
-}
-candlesEl.innerHTML=chtml+chtml;
+{t:`Carlos II, el Hechizado`, p:[
+`El último de los Austrias fue Carlos Segundo, que reinó de 1665 a 1700. Lo llamaban el Hechizado. ¿Por qué? Porque era físicamente muy débil y enfermizo, y en la época se creía que había sido víctima de un hechizo. Como su padre y su abuelo, delegó el poder en validos, que en su caso fueron corruptos.`,
+`En política exterior, luchó en tres guerras consecutivas contra la poderosa Francia de Luis Catorce, y España perdió más territorios.`,
+`El gran problema final fue la crisis sucesoria. Carlos Segundo murió sin herederos. En su testamento nombró sucesor a un príncipe francés: Felipe de Anjou, nieto de Luis Catorce. Con la muerte de Carlos Segundo, en 1700, se extinguió la dinastía de los Austrias en España.`,
+`Un consejo para memorizar: Felipe Tercero va con Lerma. Felipe Cuarto va con Olivares. Y Carlos Segundo es el Hechizado, el último Austria.`]},
 
-// GRAFICO SFONDO
-const bgCanvas=document.getElementById('chartcanvas'), bgCtx=bgCanvas.getContext('2d');
-(function(){
-  const H=bgCanvas.height;
-  const pts=[];let y=H*0.78;const sw=bgCanvas.width/2/80;
-  for(let i=0;i<=80;i++){y+=(Math.random()-.47)*95;y=Math.max(H*0.57,Math.min(H*0.94,y));pts.push(y);}
-  for(let rep=0;rep<2;rep++){
-    bgCtx.beginPath();
-    pts.forEach((py,i)=>{const x=rep*(bgCanvas.width/2)+i*sw;i===0?bgCtx.moveTo(x,py):bgCtx.lineTo(x,py);});
-    bgCtx.lineJoin='round';bgCtx.strokeStyle='rgba(79,209,255,0.35)';bgCtx.lineWidth=4;bgCtx.shadowColor='#4fd1ff';bgCtx.shadowBlur=14;bgCtx.stroke();
-  }
-})();
+{t:`Economía, población y sociedad`, p:[
+`Pasamos ahora a la situación económica, demográfica y social. ¿Cuáles fueron las causas de la crisis económica y demográfica? Son varias.`,
+`Primero, los enormes gastos de las guerras. Segundo, llegaba menos plata y menos metales preciosos de América. Esto se debía a los ataques de piratas y corsarios contra los barcos, y a la falta de mano de obra en las minas. Tercero, las epidemias y el clima adverso, con sequías e inundaciones que destruían las cosechas.`,
+`Cuarto, las quiebras del Estado. La Corona se declaró en bancarrota varias veces, por ejemplo en 1607 y en 1627, porque no podía pagar sus deudas. Quinto, la expulsión de los moriscos en 1609. Los moriscos eran los descendientes de los musulmanes convertidos al cristianismo. Su expulsión perjudicó gravemente a la agricultura, porque eran una mano de obra experta y barata.`,
+`Y sexto, el descenso de la población. España pasó de unos diez millones de habitantes a finales del siglo dieciséis a menos de ocho millones a mediados del diecisiete.`,
+`Veamos ahora la sociedad y la mentalidad. En España faltaba una burguesía fuerte. El comercio y el trabajo manual estaban mal vistos, y la burguesía perdió influencia. Al mismo tiempo, aumentaron la nobleza y el clero, porque el Estado vendía títulos para conseguir dinero. Estos grupos poseían tierras poco productivas, vivían con lujo y no pagaban impuestos.`,
+`La pobreza se extendió. Aumentaron los mendigos, los vagabundos, llamados pícaros, los ladrones y el bandolerismo en las grandes ciudades.`,
+`Finalmente, España vivió un aislamiento cultural. La Inquisición mantuvo el control ideológico y defendió el ideal de la limpieza de sangre, es decir, no tener antepasados judíos ni musulmanes. Todo esto alejó a España de la revolución científica y del racionalismo que se desarrollaban en el resto de Europa.`]},
 
-// MINI GRAFICI
-const miniData=[];
-document.querySelectorAll('.mcc').forEach(mc=>{
-  const base=parseFloat(mc.dataset.base||100), vol=parseFloat(mc.dataset.vol||5), color=mc.dataset.color||'#00e696';
-  const pts=[];let v=base;
-  for(let i=0;i<60;i++){v+=(Math.random()-.5)*vol;pts.push(v);}
-  miniData.push({canvas:mc,pts,vol,color});
-});
-function drawMini(d){
-  const ctx=d.canvas.getContext('2d'),W=d.canvas.width,H=d.canvas.height;
-  ctx.clearRect(0,0,W,H);
-  const pts=d.pts,min=Math.min(...pts),max=Math.max(...pts),range=max-min||1;
-  const pad=Math.round(H*0.14);
-  const toY=v=>H-pad-((v-min)/range)*(H-pad*2.2);
-  const segW=W/(pts.length-1);
-  ctx.beginPath();
-  pts.forEach((p,i)=>i===0?ctx.moveTo(i*segW,toY(p)):ctx.lineTo(i*segW,toY(p)));
-  ctx.lineTo((pts.length-1)*segW,H);ctx.lineTo(0,H);ctx.closePath();
-  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,d.color+'66');g.addColorStop(1,d.color+'00');
-  ctx.fillStyle=g;ctx.fill();
-  ctx.beginPath();
-  pts.forEach((p,i)=>i===0?ctx.moveTo(i*segW,toY(p)):ctx.lineTo(i*segW,toY(p)));
-  ctx.lineJoin='round';ctx.lineCap='round';
-  ctx.strokeStyle=d.color;ctx.lineWidth=4;ctx.shadowColor=d.color;ctx.shadowBlur=10;ctx.stroke();
-  ctx.shadowBlur=0;
-}
-miniData.forEach(drawMini);
-setInterval(()=>{miniData.forEach(d=>{const last=d.pts[d.pts.length-1];d.pts.push(last+(Math.random()-.5)*d.vol);d.pts.shift();drawMini(d);});},1500);
+{t:`Del Renacimiento al Barroco`, p:[
+`Ahora entramos en la literatura. El Barroco se desarrolló en el siglo diecisiete, en España y en Europa. Nació en un contexto de decadencia, de crisis social y de tensiones religiosas, justo lo que acabamos de estudiar.`,
+`Fíjate en el cambio respecto al Renacimiento. El Renacimiento creía en la armonía, en el equilibrio y en la belleza ideal del mundo. En el Barroco, esa armonía se desmorona y aparece una visión negativa, pesimista y desengañada de la vida.`,
+`La palabra clave del Barroco es desengaño. El desengaño es la toma de conciencia de que las cosas terrenales son vanas, es decir, no tienen verdadero valor. Supone el fin de las ilusiones. Por eso se dice que pasamos del idealismo renacentista al desengaño barroco.`]},
 
-// (numeri fluttuanti rimossi: l'area schermo resta pulita per la tua schermata)
+{t:`Características del Barroco`, p:[
+`Veamos las características principales del Barroco. Son seis.`,
+`Primera: la búsqueda de la originalidad. A pesar de la censura política y religiosa, los escritores quieren sorprender al lector. Para ello usan un estilo muy elaborado y, a veces, oscuro y difícil.`,
+`Segunda: el desequilibrio y la desmesura. Desaparece el equilibrio clásico. Se da importancia a la realidad cruda, a los contrastes y a las antítesis, es decir, a la oposición de ideas contrarias.`,
+`Tercera: la condición humana y la aspiración al infinito. En el ser humano barroco conviven dos actitudes: el apego a los bienes terrenales y, a la vez, la conciencia de que esos bienes son pasajeros. Esta conciencia puede llevar a la ascética y a la espiritualidad.`,
+`Cuarta: el dinamismo y la fugacidad. Las obras transmiten sensación de movimiento para expresar lo rápido que pasa el tiempo.`,
+`Quinta: la belleza y la fealdad. Junto a la belleza decorativa, también se valoran lo feo, lo deforme y lo grotesco.`,
+`Y sexta: la imitación y superación de los clásicos. Los autores barrocos imitan los modelos renacentistas y clásicos, pero intentan superarlos, muchas veces a través de la ironía y la parodia.`]},
 
-// PREZZI AGGIORNAMENTO
-const assets=[
-  {id:'rp-sp',base:5104,step:3,cId:'rp-sp-c',fmt:v=>v.toLocaleString('it-IT')},
-  {id:'rp-nq',base:18021,step:8,cId:'rp-nq-c',fmt:v=>v.toLocaleString('it-IT')},
-  {id:'rp-dw',base:38950,step:15,cId:'rp-dw-c',fmt:v=>v.toLocaleString('it-IT')},
-  {id:'rp-dx',base:17830,step:5,cId:'rp-dx-c',fmt:v=>v.toLocaleString('it-IT')},
-  {id:'rp-eu',base:1.0872,step:.0005,cId:'rp-eu-c',fmt:v=>v.toFixed(4)},
-  {id:'rp-gu',base:1.2648,step:.0004,cId:'rp-gu-c',fmt:v=>v.toFixed(4)},
-  {id:'rp-uj',base:151.42,step:.08,cId:'rp-uj-c',fmt:v=>v.toFixed(2)},
-  {id:'rp-sol',base:148.2,step:1,cId:'rp-sol-c',fmt:v=>v.toFixed(2)},
-  {id:'rp-xrp',base:0.524,step:.002,cId:'rp-xrp-c',fmt:v=>v.toFixed(4)},
-  {id:'rp-bnb',base:592.1,step:2,cId:'rp-bnb-c',fmt:v=>v.toFixed(2)},
-  {id:'lp-btc-p',base:67240,step:40,cId:'lp-btc-c',fmt:v=>v.toLocaleString('it-IT')},
-  {id:'lp-eth-p',base:3412,step:4,cId:'lp-eth-c',fmt:v=>v.toFixed(2)},
-  {id:'lp-gold-p',base:2351,step:2,cId:'lp-gold-c',fmt:v=>v.toLocaleString('it-IT')},
-  {id:'lp-oil-p',base:78.45,step:.15,cId:'lp-oil-c',fmt:v=>v.toFixed(2)},
-  {id:'lp-eu-p',base:1.0872,step:.0005,cId:'lp-eu-c',fmt:v=>v.toFixed(4)},
-  {id:'lp-nq-p',base:18021,step:8,cId:'lp-nq-c',fmt:v=>v.toLocaleString('it-IT')},
+{t:`Los géneros literarios`, p:[
+`El Barroco cultivó los tres grandes géneros. En poesía hay dos corrientes: el culteranismo, con Luis de Góngora, y el conceptismo, con Francisco de Quevedo.`,
+`En prosa destacan dos tipos de obras. Por un lado, la novela picaresca, como El Buscón, de Quevedo. Por otro, la prosa didáctica, como El Criticón, de Baltasar Gracián.`,
+`Y en teatro, los grandes autores son tres: Lope de Vega, con Fuenteovejuna; Calderón de la Barca, con La vida es sueño; y Tirso de Molina, con El burlador de Sevilla.`]},
+
+{t:`Culteranismo y conceptismo`, p:[
+`Ahora, una de las partes más importantes del tema: las dos corrientes de la poesía barroca. Las dos buscan el artificio y la sorpresa, pero de maneras distintas.`,
+`Empezamos por el culteranismo, también llamado gongorismo, por Góngora. El culteranismo da prioridad a la forma. Su objetivo es crear belleza visual y musical mediante un lenguaje culto y elaborado.`,
+`Sus recursos principales son estos. Los cultismos, que son palabras tomadas del latín o del griego. Los hipérbatos, que alteran el orden normal de las palabras en la frase. Las metáforas audaces. Las perífrasis, que dicen algo de forma indirecta, con más palabras. Las sinestesias, que mezclan sensaciones de distintos sentidos. Y muchas referencias a la luz, el color y el sonido. Su principal representante es Luis de Góngora.`,
+`Ahora el conceptismo. El conceptismo da prioridad al contenido, al concepto, a la idea. Su objetivo es estimular la inteligencia y el ingenio, relacionando ideas distintas de forma inesperada.`,
+`Sus recursos son los dobles sentidos, los juegos de palabras, las antítesis, las paradojas y la condensación del significado, es decir, decir mucho con pocas palabras. Su principal representante es Francisco de Quevedo.`,
+`Un truco para recordarlo: culteranismo es forma, o sea, cómo se dice. Conceptismo es concepto, o sea, qué se dice.`]},
+
+{t:`Los temas de la poesía barroca`, p:[
+`Pasamos a los temas principales de la poesía barroca. Son seis.`,
+`Primero, el amor. Continúa la tradición petrarquista y neoplatónica del Renacimiento, pero también se trata con sátira o parodia.`,
+`Segundo, la naturaleza, que se describe con detalle, con realismo y con colores vivos.`,
+`Tercero, la mitología. Por un lado, se celebran con solemnidad los modelos clásicos. Por otro, se reinterpretan de forma satírica o grotesca.`,
+`Cuarto, la muerte y el paso del tiempo. La vida terrenal es efímera, es decir, dura muy poco. Por eso aparecen símbolos como los relojes, las flores marchitas y las calaveras.`,
+`Quinto, el desengaño, que es el tema central. Se critican las apariencias engañosas, las riquezas, el lujo y la ambición de poder.`,
+`Y sexto, la religión. Los poetas reflexionan sobre los conflictos del alma, el arrepentimiento, el pecado y la gracia divina.`]},
+
+{t:`Quevedo: vida y personalidad`, p:[
+`Ahora conocemos al primero de nuestros grandes autores: Francisco de Quevedo y Villegas, que vivió de 1580 a 1645.`,
+`Quevedo nació en Madrid, en una familia aristocrática vinculada a la corte. Desde joven mostró gran talento y una enorme cultura. Estudió y trabajó en la política y en la diplomacia. Estuvo al servicio del duque de Osuna, pero, cuando el duque cayó en desgracia, Quevedo fue apartado de la corte.`,
+`En 1621 volvió a Madrid y apoyó las ideas reformistas del conde-duque de Olivares. Pero más tarde se convirtió en su adversario y lo criticó con sátiras. Por eso, en 1639, fue encarcelado en León. Pasó sus últimos años enfermo y con dificultades económicas, y murió en 1645.`,
+`Su personalidad refleja las contradicciones de la España barroca. Quería obtener títulos nobiliarios, pero a veces criticaba a la aristocracia. Defendía en sus obras el valor burgués de la virtud, pero no siempre seguía esos principios en su vida. Era muy inteligente y famoso por su ingenio y sus ocurrencias, pero también tenía un carácter introvertido y difícil. Y, además, fue un gran rival de Góngora.`]},
+
+{t:`Quevedo: estilo y poesía`, p:[
+`Quevedo escribió muchísimas obras, en prosa y en verso. Es el máximo representante del conceptismo y uno de los grandes maestros de la lengua española.`,
+`Su estilo se caracteriza por la densidad. Usa juegos de palabras, comparaciones insólitas, antítesis y contrastes, con los que consigue efectos sorprendentes. Además, expresó como pocos el gran tema barroco del desengaño: la desilusión ante la vida y ante las apariencias.`,
+`Su obra incluye poesía, como sus sonetos; la novela picaresca El Buscón; y obras satírico-morales como los Sueños y La hora de todos y la Fortuna con seso.`,
+`En poesía, Quevedo dominó muchas formas métricas, pero predominan los sonetos. Su poesía se divide en cinco tipos.`,
+`La poesía amorosa retoma la tradición petrarquista y neoplatónica. Presenta el amor como una fuerza capaz de vencer a la muerte, pero también como causa de sufrimiento.`,
+`La poesía filosófica y moral reflexiona sobre la brevedad de la vida, la muerte y el paso del tiempo, y critica la decadencia de las costumbres castellanas.`,
+`La poesía religiosa trata el arrepentimiento, la fugacidad de lo terrenal, la relación con Dios, la muerte y las debilidades humanas.`,
+`La poesía política muestra su preocupación por la decadencia del Imperio.`,
+`Y la poesía satírico-burlesca muestra su enorme ingenio. Quevedo usa la burla también para desahogar el dolor que le causa el desengaño.`]},
+
+{t:`Quevedo: la prosa y El Buscón`, p:[
+`Vamos con la prosa de Quevedo. Primero, las obras satírico-morales. Los Sueños, de 1627, son cinco narraciones breves en las que Quevedo critica y ridiculiza los vicios y los oficios de la sociedad de su tiempo. En La hora de todos y la Fortuna con seso, de 1641, la diosa Fortuna da a cada persona lo que realmente merece. Así se muestra un mundo al revés.`,
+`Ahora, su novela picaresca: La vida del Buscón, publicada en 1626. El protagonista, Pablos, cuenta su vida en primera persona. Es hijo de un barbero ladrón y de una madre que se dedica a la brujería. A lo largo de la novela intenta ascender socialmente, pero fracasa una y otra vez.`,
+`El Buscón se inspira en el Lazarillo de Tormes y en el Guzmán de Alfarache, pero destaca por su virtuosismo lingüístico.`,
+`Sus características principales son cinco. Uno: el ingenio y la brillantez del lenguaje, refinado, elaborado y lleno de figuras retóricas. Dos: la exageración y la deformación grotesca. Quevedo lleva las situaciones al extremo hasta hacerlas irreales, y así se aleja del realismo típico de la picaresca clásica.`,
+`Tres: el tratamiento caricaturesco. Los personajes parecen marionetas, sin afecto ni dignidad; son caricaturas. Cuatro: la ausencia de intención moralizadora. El objetivo de Quevedo es sobre todo estético y satírico, no enseñar una moral.`,
+`Y cinco: la ideología. Quevedo se opone a la movilidad social y defiende una división rígida de las clases. Por eso Pablos nunca consigue subir de clase: para Quevedo, cada uno debe quedarse en su lugar.`]},
+
+{t:`Góngora: vida`, p:[
+`Llegamos al segundo gran poeta: Luis de Góngora, que nació en Córdoba en 1561 y murió allí mismo en 1627.`,
+`Nació en una familia acomodada y culta. Fue destinado a la carrera eclesiástica, aunque él prefería una vida mundana y despreocupada. Estudió Derecho en Salamanca, donde empezó a escribir poesía y se hizo famoso muy pronto.`,
+`En 1617, gracias a su protector, el duque de Lerma, fue nombrado capellán real. Se ordenó sacerdote y se instaló en Madrid, donde llegó a ser considerado el mejor poeta de su tiempo.`,
+`Pero después llegó la decadencia. Sus protectores cayeron, y además tenía afición al juego, así que sufrió graves problemas económicos. Enfermo, volvió a Córdoba en 1626 y murió al año siguiente.`,
+`La posteridad lo recuerda como un hombre severo, sombrío y orgulloso. Tuvo célebres rivalidades personales y literarias con Francisco de Quevedo y con Lope de Vega.`]},
+
+{t:`Góngora: obra`, p:[
+`Aparte de dos comedias poco relevantes, la obra de Góngora es exclusivamente lírica, es decir, poesía, y de tema profano, o sea, no religioso.`,
+`Se distinguen dos etapas. Antes de 1610, sus rasgos culteranos son menos marcados. Después de 1610, crea un lenguaje poético nuevo, acumulando e intensificando recursos retóricos complejos.`,
+`Su obra se divide en dos grandes grupos. El primero es la poesía popular, en versos de arte menor. Incluye romances y letrillas que tuvieron mucho éxito. Se inspiran en la tradición popular, pero se nota la elaboración culta del poeta. Algunas tienen un tono serio y grave; otras, humorístico o satírico. Un ejemplo es la letrilla Ándeme yo caliente y ríase la gente.`,
+`El segundo grupo es la poesía culta, en versos de arte mayor. Aquí están, primero, los sonetos, que siguen el modelo clásico y tratan varios temas. Los amorosos muestran la influencia de Petrarca. Los satíricos usan un léxico coloquial e incluso vulgar. Los morales expresan las inquietudes personales del poeta, con un tono serio o burlón. Los mitológicos tienen intención burlesca y presentan a los dioses del Olimpo como seres humanos.`,
+`También hay sonetos en espiral, difíciles de leer porque no tienen pausas fuertes y están llenos de metáforas, paralelismos y correlaciones.`,
+`Y, por último, los poemas mayores, que son la cumbre del culteranismo. Destacan la Fábula de Polifemo y Galatea, de 1612, y las Soledades, de 1613. Son obras pensadas como un reto para la inteligencia, y resultan difíciles para el lector poco culto. Se caracterizan por los cultismos, los latinismos, los hipérbatos complejos y las metáforas audaces, además de una gran atención a los colores, la luz y la musicalidad.`]},
+
+{t:`Repaso final`, p:[
+`Para terminar, hagamos un repaso rápido.`,
+`El siglo diecisiete fue para España un siglo de crisis: guerras, revueltas, quiebras del Estado, epidemias, expulsión de los moriscos y pérdida de población. Gobernaron los Austrias menores con sus validos: Felipe Tercero con el duque de Lerma, Felipe Cuarto con el conde-duque de Olivares, y Carlos Segundo, el Hechizado, con quien terminó la dinastía.`,
+`En literatura, esta crisis produjo el Barroco, cuya palabra clave es el desengaño. En poesía hay dos corrientes: el culteranismo de Góngora, que da prioridad a la forma, y el conceptismo de Quevedo, que da prioridad al concepto.`,
+`Quevedo es el maestro del ingenio, de la sátira y del desengaño, y el autor de El Buscón. Góngora es el maestro de la belleza formal, autor del Polifemo y de las Soledades.`,
+`Y con esto terminamos. ¡Mucho ánimo con el estudio!`]}
 ];
-const cur={};assets.forEach(a=>cur[a.id]=a.base);
-setInterval(()=>{
-  assets.forEach(a=>{
-    const prev=cur[a.id], next=prev+(Math.random()-.5)*a.step*2;
-    cur[a.id]=next;
-    const el=document.getElementById(a.id), elC=document.getElementById(a.cId);
-    if(!el)return;
-    el.textContent=a.fmt(next);
-    const col=next>=prev?'#00e696':'#ff4a5a';
-    el.style.color=col;
-    if(elC){const pct=(((next-a.base)/a.base)*100).toFixed(2);elC.textContent=(pct>=0?'+':'')+pct+'%';elC.style.color=col;}
+
+/* ---------- build the page ---------- */
+const textEl = document.getElementById('text');
+const tocEl = document.getElementById('toc');
+const SENT = [];      // SENT[ci] = [{el,text}]
+const tocBtns = [];
+const splitSentences = s => (s.match(/[^.!?…]+[.!?…]+\s*|[^.!?…]+$/g) || [s]).map(x => x.trim()).filter(Boolean);
+
+CH.forEach((c, ci) => {
+  const sec = document.createElement('section');
+  sec.className = 'ch'; sec.id = 'ch-' + ci;
+  const h = document.createElement('h2');
+  h.innerHTML = `<span class="n">${ci + 1}</span><span></span>`;
+  h.lastChild.textContent = c.t;
+  sec.appendChild(h);
+  SENT[ci] = [];
+  c.p.forEach(par => {
+    const p = document.createElement('p');
+    splitSentences(par).forEach(txt => {
+      const span = document.createElement('span');
+      span.className = 's'; span.textContent = txt;
+      const si = SENT[ci].length;
+      span.addEventListener('click', () => { ci_ = ci; si_ = si; play(); });
+      p.appendChild(span); p.appendChild(document.createTextNode(' '));
+      SENT[ci].push({ el: span, text: txt });
+    });
+    sec.appendChild(p);
   });
-},1800);
+  textEl.appendChild(sec);
 
-// TICKER FOOTER
-const tickerItems=[
-  {n:'BTC/USD',v:'67.240',p:'+1.4%',up:true},{n:'ETH/USD',v:'3.412',p:'-0.8%',up:false},
-  {n:'SP500',v:'5.104',p:'+0.5%',up:true},{n:'NASDAQ',v:'18.021',p:'+0.7%',up:true},
-  {n:'DOW',v:'38.950',p:'-0.2%',up:false},{n:'GOLD',v:'2.351',p:'+0.3%',up:true},
-  {n:'OIL/WTI',v:'78.45',p:'+0.6%',up:true},{n:'EUR/USD',v:'1.0872',p:'-0.3%',up:false},
-  {n:'GBP/USD',v:'1.2648',p:'+0.1%',up:true},{n:'USD/JPY',v:'151.42',p:'+0.2%',up:true},
-  {n:'DAX',v:'17.830',p:'+0.4%',up:true},{n:'SOL',v:'148.20',p:'+2.1%',up:true},
-];
-const tickInner=document.getElementById('tick-inner');
-function buildTicker(items){
-  let h='';
-  items.forEach(it=>{const col=it.up?'#00e696':'#ff4a5a';const arr=it.up?'▲':'▼';
-    h+=`<div class="tick-item"><span class="tn">${it.n}</span><span class="tv">${it.v}</span><span class="tp" style="color:${col}">${arr} ${it.p}</span></div>`;});
-  return h+h;
-}
-tickInner.innerHTML=buildTicker(tickerItems);
-setInterval(()=>{tickerItems.forEach(it=>{if(Math.random()>.7)it.up=!it.up;});tickInner.innerHTML=buildTicker(tickerItems);},2500);
+  const li = document.createElement('li');
+  const b = document.createElement('button');
+  b.textContent = (ci + 1) + '. ' + c.t;
+  b.addEventListener('click', () => { ci_ = ci; si_ = 0; playing ? speakCurrent() : (mark(true), save()); });
+  li.appendChild(b); tocEl.appendChild(li); tocBtns.push(b);
+});
+const TOTAL = SENT.reduce((a, s) => a + s.length, 0);
+if (window.matchMedia('(max-width:860px)').matches) document.getElementById('tocBox').open = false;
 
-// OROLOGIO
-function updateClock(){
-  const now=new Date();
-  const days=['DOM','LUN','MAR','MER','GIO','VEN','SAB'];
-  const months=['GEN','FEB','MAR','APR','MAG','GIU','LUG','AGO','SET','OTT','NOV','DIC'];
-  document.getElementById('clock-t').textContent=now.toTimeString().slice(0,8);
-  document.getElementById('clock-d').textContent=`${days[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]}`;
+/* ---------- speech ---------- */
+const synth = window.speechSynthesis;
+const statusEl = document.getElementById('status');
+const playBtn = document.getElementById('play');
+const rateSel = document.getElementById('rate');
+const voiceSel = document.getElementById('voice');
+const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let ci_ = 0, si_ = 0, playing = false, gen = 0, voices = [], voice = null;
+
+function store(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function load(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+function save() { store('barroco-pos', { ci: ci_, si: si_ }); }
+
+const pos = load('barroco-pos');
+if (pos && SENT[pos.ci] && SENT[pos.ci][pos.si]) { ci_ = pos.ci; si_ = pos.si; }
+const savedRate = load('barroco-rate');
+if (savedRate) rateSel.value = String(savedRate);
+
+function mark(scroll) {
+  document.querySelectorAll('.s.now').forEach(e => e.classList.remove('now'));
+  const cur = SENT[ci_][si_];
+  cur.el.classList.add('now');
+  if (scroll) cur.el.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' });
+  tocBtns.forEach((b, i) => b.setAttribute('aria-current', i === ci_ ? 'true' : 'false'));
+  document.getElementById('where').textContent = `Apartado ${ci_ + 1} de ${CH.length}`;
+  document.getElementById('ptitle').textContent = CH[ci_].t;
+  let done = 0; for (let i = 0; i < ci_; i++) done += SENT[i].length; done += si_;
+  document.getElementById('bar').style.width = (done / TOTAL * 100) + '%';
 }
-updateClock();setInterval(updateClock,1000);
+
+function setPlayingUI(on) {
+  document.getElementById('icoPlay').style.display = on ? 'none' : '';
+  document.getElementById('icoPause').style.display = on ? '' : 'none';
+  playBtn.setAttribute('aria-label', on ? 'Pausar' : 'Reproducir');
+}
+
+function speakCurrent() {
+  const my = ++gen;
+  synth.cancel();
+  mark(true); save();
+  const u = new SpeechSynthesisUtterance(SENT[ci_][si_].text);
+  u.lang = voice ? voice.lang : 'es-ES';
+  if (voice) u.voice = voice;
+  u.rate = parseFloat(rateSel.value);
+  u.onend = () => { if (my === gen && playing) advance(); };
+  u.onerror = e => {
+    if (my !== gen || e.error === 'interrupted' || e.error === 'canceled') return;
+    if (e.error === 'not-allowed') { stop(); statusEl.textContent = 'El navegador ha bloqueado el audio. Pulsa de nuevo el botón para reproducir.'; return; }
+    if (playing) advance();
+  };
+  setTimeout(() => { if (my === gen) synth.speak(u); }, 60);
+}
+
+function advance() {
+  si_++;
+  if (si_ >= SENT[ci_].length) {
+    ci_++; si_ = 0;
+    if (ci_ >= CH.length) { ci_ = 0; si_ = 0; stop(); mark(false); save(); statusEl.textContent = 'Has llegado al final. Pulsa el botón para escucharlo otra vez desde el principio.'; return; }
+  }
+  speakCurrent();
+}
+
+function play() { if (!synth) return; playing = true; setPlayingUI(true); speakCurrent(); }
+function stop() { playing = false; gen++; if (synth) synth.cancel(); setPlayingUI(false); }
+
+playBtn.addEventListener('click', () => playing ? stop() : play());
+document.getElementById('prev').addEventListener('click', () => {
+  ci_ = (si_ > 0) ? ci_ : Math.max(0, ci_ - 1); si_ = 0;
+  playing ? speakCurrent() : (mark(true), save());
+});
+document.getElementById('next').addEventListener('click', () => {
+  if (ci_ < CH.length - 1) { ci_++; si_ = 0; }
+  playing ? speakCurrent() : (mark(true), save());
+});
+rateSel.addEventListener('change', () => { store('barroco-rate', parseFloat(rateSel.value)); if (playing) speakCurrent(); });
+voiceSel.addEventListener('change', () => {
+  voice = voices.find(v => v.name === voiceSel.value) || null;
+  store('barroco-voice', voiceSel.value);
+  if (playing) speakCurrent();
+});
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && !/^(SELECT|BUTTON|INPUT|SUMMARY)$/.test(e.target.tagName)) { e.preventDefault(); playing ? stop() : play(); }
+});
+
+function scoreVoice(v) {
+  let s = 0;
+  if (/^es[-_]ES/i.test(v.lang)) s += 4; else if (/^es/i.test(v.lang)) s += 2;
+  if (/natural|neural|online|premium|enhanced|mejorad/i.test(v.name)) s += 3;
+  if (/google|m[oó]nica|jorge|luc[ií]a|elvira|[aá]lvaro|paulina|marisol/i.test(v.name)) s += 2;
+  return s;
+}
+
+function loadVoices() {
+  const all = synth.getVoices();
+  if (!all.length) return;
+  voices = all.filter(v => /^es/i.test(v.lang)).sort((a, b) => scoreVoice(b) - scoreVoice(a));
+  voiceSel.innerHTML = '';
+  if (!voices.length) {
+    voiceSel.innerHTML = '<option value="">Predeterminada</option>';
+    voice = null;
+    statusEl.className = 'status warn';
+    statusEl.textContent = 'No encuentro una voz en español en este dispositivo, así que se usará la voz del sistema. Para oír una buena pronunciación, añade una voz en español en los ajustes de idioma del dispositivo, o abre la página en Chrome, Edge o Safari.';
+    return;
+  }
+  voices.forEach(v => {
+    const o = document.createElement('option');
+    o.value = v.name; o.textContent = v.name.replace(/^(Microsoft|Google)\s*/, '') + ' (' + v.lang + ')';
+    voiceSel.appendChild(o);
+  });
+  const savedVoice = load('barroco-voice');
+  voice = voices.find(v => v.name === savedVoice) || voices[0];
+  voiceSel.value = voice.name;
+  statusEl.className = 'status';
+  statusEl.textContent = `Voz lista: ${voices.length} ${voices.length === 1 ? 'voz' : 'voces'} en español. Si una voz suena poco natural, prueba otra en el menú “Voz”. Mantén la pantalla encendida mientras escuchas: en algunos móviles la voz se detiene al bloquear el teléfono.`;
+}
+
+if (!synth || typeof SpeechSynthesisUtterance === 'undefined') {
+  playBtn.disabled = true;
+  statusEl.className = 'status warn';
+  statusEl.textContent = 'Este navegador no puede leer textos en voz alta. Abre la página en Chrome, Edge o Safari para escuchar la explicación. Mientras tanto, puedes leer el texto completo aquí abajo.';
+} else {
+  loadVoices();
+  synth.onvoiceschanged = loadVoices;
+  setTimeout(loadVoices, 600);
+  setTimeout(() => { if (!voices.length && !synth.getVoices().length) { statusEl.textContent = 'Pulsa el botón rojo para empezar a escuchar.'; } }, 1500);
+}
+mark(false);
+window.addEventListener('pagehide', () => { if (synth) synth.cancel(); });
 </script>
 </body>
 </html>
